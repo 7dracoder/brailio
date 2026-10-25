@@ -57,11 +57,29 @@ This is a learned tactile code played through the phone's haptic engine. It does
 
 ### Finding an object
 
-The finder adapts the spatial flow from [Faith](https://github.com/7dracoder/Faith). It keeps AR tracking active while a name is entered and checks a fresh camera frame first. Gemini returns the object's image bounding box. Brailio uses available LiDAR depth, or a ray from the captured camera pose through the object's base to a detected or estimated surface, to establish an approximate 3D position.
+The finder adapts the spatial flow from [Faith](https://github.com/7dracoder/Faith). It keeps AR tracking active while a name is entered and checks a fresh camera frame first. The selected AI provider returns the object's image bounding box. Baseten is the default. Brailio uses available LiDAR depth, or a ray from the captured camera pose through the object's base to a detected or estimated surface, to establish an approximate 3D position.
 
 No room movie is saved. Temporary still snapshots support the search. During guidance the camera and motion sensors still run for AR tracking; repeated AI inference is not needed to approach a position already measured in that session. Facing away or losing reliable tracking produces a separate double-tap cue.
 
 A tap checks whether the phone is near the measured position. It does **not** prove that the item is correct; the user confirms the actual object. Positions belong to their camera session, can drift and do not follow moved objects. Saved last-seen information helps a later search, rather than guaranteeing an exact persistent indoor location. Mark center provides a manual surface-position option.
+
+### Ask your documents
+
+1. Open **Read → Documents → Phone Files** and select one or several PDFs/text files in the same import.
+2. Choose **Ask documents → Choose documents**. Select up to ten imported files. You can also open a book and use **Ask this book** on the final reader page.
+3. Choose **Write question**, write with your finger, then choose **Done**. This starts the question automatically. Companion typing and a separate Ask AI control are also available.
+4. Feel the answer in your selected **Morse or Braille** code. Use **Read answer** to replay it, **Stop** to cancel, or **Save answer** to keep it as a note.
+5. Open **Sources** to feel each cited document's title, page and original passage.
+
+For example: import a schedule and budget, then write “When does the workshop start and what is its budget?”
+
+<img src="screenshots/Document-Questions-Fixture.png" width="260" alt="Document questions screen with Write question, Choose documents, Ask AI, Read answer, Sources and Stop; displayed answer is explicitly a UI test fixture">
+
+*Question interface captured with a synthetic UI-test answer; live Baseten transport is tested separately on the iPhone.*
+
+Brailio scans the selected files locally, using OCR for scanned PDF pages. It ranks text passages against the question and sends up to twelve excerpts with their document titles and page numbers to the selected provider. It does not send the whole library automatically. Questions support up to **ten documents, 600 total pages and two million extracted characters**, with a **1000-character question** limit. Large selections must be narrowed rather than silently truncated. Plain-text “pages” are 2400-character sections.
+
+Answers are generated from retrieved excerpts, which may omit relevant passages. Missing evidence produces an explicit “could not find” response. Citation IDs are checked against the submitted passages; this verifies source references, not factual correctness. Conflicting or incomplete evidence and OCR errors can still produce a wrong answer, so review Sources. Stop, leaving the question screen, or backgrounding cancels an in-progress question. Answers remain in memory unless saved as a note.
 
 ### Following a route
 
@@ -81,10 +99,10 @@ You need a Mac with Xcode, an iPhone running **iOS 17 or later**, and an Apple s
 1. Clone this repository and open **Brailio.xcodeproj** in Xcode.
 2. Select the **Brailio** target, choose your signing team, connect the iPhone and run.
 3. Start with **Learn** to practice the touch controls and Braille patterns.
-4. For AI features, open **Settings → AI connection**, enter your own Gemini API key and choose **Save and test**. The key stays in that phone's Keychain.
+4. For AI features, open **Settings → AI connection**, keep **Baseten** selected, enter your own Baseten API key and choose **Save and test**. The key stays in that phone's Keychain.
 5. Try **Write**, then **Read**, **Talk**, **Find** or **Go**. Allow camera, location, microphone or speech access when the relevant feature needs it.
 
-Handwriting, document OCR, Morse/Braille playback and local storage do not require an AI key. AI requests and online document/place searches need an internet connection. The configured Gemini model must be available to your API account; its identifier is in [DemoGemini.swift](Brailio/Core/DemoGemini.swift).
+Handwriting, document OCR, Morse/Braille playback and local storage do not require an AI key. AI requests and online document/place searches need an internet connection. Baseten uses `zai-org/GLM-5.3-Flash` through its Model API. A real optional Gemini connection is available in AI connection with its own separate Keychain credential; it is used only when explicitly selected and configured. See [DemoBaseten.swift](Brailio/Core/DemoBaseten.swift) and [DemoGemini.swift](Brailio/Core/DemoGemini.swift).
 
 An alternative private-device provisioning helper is [scripts/provision-private-demo.sh](scripts/provision-private-demo.sh). It reads the key with terminal echo disabled; close and reopen the app after provisioning to clear the transient launch environment.
 
@@ -99,8 +117,8 @@ An alternative private-device provisioning helper is [scripts/provision-private-
 | **MapKit / Core Location** | Apple place search, walking routes and location feedback |
 | **PDFKit** | PDF import and page-based reading |
 | **Apple Speech / speech synthesis** | Optional conversation transcription and spoken replies |
-| **Gemini API** | Object detection and direct-demo writing assistance |
-| **Snowflake Cortex** | Text correction/completion in the optional configured server mode |
+| **Baseten Model API** | Default provider for document answers, writing assistance and object detection |
+| **Gemini API** | Optional direct provider, used only when selected and configured |
 | **Node.js / Vercel** | Optional authenticated API backend and public privacy/terms pages |
 
 The backend lives in [backend](backend). Copy its [.env.example](backend/.env.example) into a local environment file and supply your own credentials. Server mode uses an app access token; provider credentials stay on the server. Optional Google Routes support requires a separately configured server key.
@@ -126,7 +144,7 @@ node --test backend/tests/assist.test.js backend/tests/route.test.js
 
 Tests cover Morse mappings, dot/dash timing, letter/word gaps, mode persistence, playback completion/cancellation, Braille translation, writing, documents, route feedback, spatial placement, provider responses and fixed UI flows. Simulator and synthetic tests cannot establish real-room positioning accuracy or outdoor safety. The physical-device Morse test requires a connected iPhone; the Simulator cannot verify how vibration feels.
 
-Morse update verification: 27 distinct Simulator checks passed across the focused unit, document and UI runs. The physical-iPhone haptics test was skipped because only a Simulator was connected; hardware feel and comprehension are not verified by those results.
+On 25 October 2026, the connected iPhone passed live Baseten questions against one synthetic source and two locally imported synthetic documents, with valid citations, followed by tactile playback. The physical Morse SOS haptic test also passed. These checks confirm transport, response handling and hardware playback without establishing real-user comprehension. Simulator UI tests use an explicit synthetic response fixture rather than a live model.
 
 Project configuration is in [project.yml](project.yml); use `xcodegen generate` after changing that configuration. Research sources and design boundaries are in [docs/UX_RESEARCH.md](docs/UX_RESEARCH.md).
 

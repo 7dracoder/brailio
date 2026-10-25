@@ -36,10 +36,20 @@ final class WholeWordTests:XCTestCase {
         XCTAssertEqual(DestinationResolution.select("Cafe north",places:places,location:origin)?.name,"Cafe north")
         XCTAssertEqual(DestinationResolution.select("nearest cafe",places:places,location:origin)?.name,"Cafe south")
     }
+    func testBasetenDefaultAndGeminiRemainDistinctProviders() throws {
+        let defaults = UserDefaults.standard, old = defaults.object(forKey: "aiProvider")
+        defer { if let old { defaults.set(old, forKey: "aiProvider") } else { defaults.removeObject(forKey: "aiProvider") } }
+        defaults.removeObject(forKey: "aiProvider"); XCTAssertEqual(DemoAccess.provider, .baseten)
+        defaults.set("gemini", forKey: "aiProvider"); XCTAssertEqual(DemoAccess.provider, .gemini)
+        let baseten = try DemoBaseten.payload(task: "correct", text: "hello", image: nil, images: [])
+        let gemini = try DemoGemini.payload(task: "correct", text: "hello", image: nil, images: [])
+        XCTAssertEqual(baseten["model"] as? String, "zai-org/GLM-5.3-Flash")
+        XCTAssertNotNil(baseten["messages"]); XCTAssertNotNil(gemini["contents"])
+    }
     func testDemoPayloadContainsNoBundledCredentials() throws {
-        let payload=try DemoGemini.payload(task:"correct",text:"helo",image:nil,images:[])
+        let payload=try DemoBaseten.payload(task:"correct",text:"helo",image:nil,images:[])
         let data=try JSONSerialization.data(withJSONObject:payload)
         XCTAssertFalse(String(data:data,encoding:.utf8)!.contains("Authorization"))
-        XCTAssertThrowsError(try DemoGemini.payload(task:"find_room",text:"keys",image:nil,images:[]))
+        XCTAssertThrowsError(try DemoBaseten.payload(task:"find_room",text:"keys",image:nil,images:[]))
     }
 }

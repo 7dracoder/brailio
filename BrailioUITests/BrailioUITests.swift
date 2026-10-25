@@ -139,6 +139,26 @@ final class BrailioUITests: XCTestCase {
         capture(app, "Room-After-Written-Query")
     }
 
+    @MainActor func testWrittenDocumentQuestionAnswerAndSourcesWithoutScrolling() {
+        let app = XCUIApplication(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"] = "1"; app.launchEnvironment["BRAILIO_UI_TEST_LIBRARY"] = "1"; app.launchEnvironment["BRAILIO_UI_TEST_DOCUMENT_QA"] = "1"; app.launchArguments = ["-slotDuration", "0.001"]; app.launch()
+        choose("homeRead", in: app); choose("readDocuments", in: app); choose("docAsk", in: app)
+        XCTAssertTrue(app.buttons["questionWrite"].exists)
+        choose("questionChoose", in: app); choose("questionAll", in: app); choose("questionDone", in: app)
+        choose("questionWrite", in: app)
+        let canvas = app.otherElements["handwritingCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 4))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).press(forDuration: 0.1, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)), withVelocity: .slow, thenHoldForDuration: 0)
+        let recognized = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", "Write a word"), object: app.staticTexts["surfaceStatus"])
+        XCTAssertEqual(XCTWaiter.wait(for: [recognized], timeout: 12), .completed)
+        choose("inkDone", in: app)
+        let answer = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Test fixture answer"), object: app.staticTexts["surfaceStatus"])
+        XCTAssertEqual(XCTWaiter.wait(for: [answer], timeout: 8), .completed)
+        XCTAssertEqual(app.scrollViews.count, 0); capture(app, "Document-Questions-Fixture")
+        choose("questionSources", in: app)
+        XCTAssertTrue(app.buttons["questionSource0"].exists)
+        choose("questionSource0", in: app)
+        XCTAssertEqual(app.scrollViews.count, 0)
+    }
     @MainActor func testDocumentLibraryReadsPagesAndResumesWithoutScrolling() {
         let app = XCUIApplication(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"] = "1"; app.launchEnvironment["BRAILIO_UI_TEST_LIBRARY"] = "1"; app.launchArguments = ["-slotDuration", "0.001"]; app.launch()
         choose("homeRead", in: app); choose("readDocuments", in: app); choose("docLibrary", in: app)

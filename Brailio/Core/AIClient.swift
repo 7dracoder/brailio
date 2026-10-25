@@ -8,14 +8,19 @@ struct AIResult: Codable {
     let box: ObjectBox?
     let evidenceFrame: Int?
     let verdict: String?
+    var citations: [String]? = nil
 }
 
 enum AIClient {
-    static func request(task: String, text: String, image: Data? = nil, images: [Data] = []) async throws -> AIResult {
-        if DemoAccess.configured { return try await DemoGemini.request(task:task,text:text,image:image,images:images) }
+    static func request(task: String, text: String, image: Data? = nil, images: [Data] = [], documents: [DocumentExcerpt] = []) async throws -> AIResult {
+        if DemoAccess.configured {
+            if DemoAccess.provider == .gemini { return try await DemoGemini.request(task:task,text:text,image:image,images:images,documents:documents) }
+            return try await DemoBaseten.request(task:task,text:text,image:image,images:images,documents:documents)
+        }
+        guard DemoAccess.provider == .baseten else { throw ServiceError.message("Add a Gemini key for the optional Gemini connection, or select Baseten.") }
         guard let raw = UserDefaults.standard.string(forKey: "backendURL"),
               let base = URL(string: raw), base.scheme == "https", base.host != nil else {
-            throw ServiceError.message("The AI connection needs companion setup. Gemini credentials stay on the server.")
+            throw ServiceError.message("The AI connection needs companion setup. Baseten credentials stay on the server.")
         }
         var request = URLRequest(url: base.appendingPathComponent("assist"))
         request.httpMethod = "POST"
@@ -23,7 +28,7 @@ enum AIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         guard !BackendAccess.token.isEmpty else { throw ServiceError.message("The AI connection needs companion setup.") }
         request.setValue("Bearer " + BackendAccess.token, forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["task": task, "text": text, "image": image?.base64EncodedString() ?? "", "images": images.map { $0.base64EncodedString() }])
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["task": task, "text": text, "image": image?.base64EncodedString() ?? "", "images": images.map { $0.base64EncodedString() }, "documents": documents.map(\.json)])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
             let message = (try? JSONSerialization.jsonObject(with: data) as? [String: String])?["error"]

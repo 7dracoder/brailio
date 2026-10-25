@@ -112,3 +112,82 @@ final class DocumentsAndPinsTests: XCTestCase {
     }
 
 }
+
+final class DocumentQuestionTests: XCTestCase {
+    private func fixture() async throws -> (URL, DocumentLibrary, Set<UUID>) {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let library = await DocumentLibrary(directory: root.appendingPathComponent("library"))
+        var ids: Set<UUID> = []
+        for (title, text) in [("Schedule", "The workshop begins at ten on Friday. Bring a blue notebook."), ("Budget", "The workshop budget is forty two dollars. The organizer is Mira.")] {
+            let url = root.appendingPathComponent(title + ".txt")
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            try await library.importFile(url); if let id = await library.active { ids.insert(id) }
+        }
+        return (root, library, ids)
+    }
+    @MainActor func testMultiDocumentExtractionAndRetrieval() async throws {
+        let (root, library, ids) = try await fixture(); defer { try? FileManager.default.removeItem(at: root) }
+        let active = library.active, page = library.page
+        let sources = try await library.questionExcerpts(ids: ids, question: "When is the workshop and what is the budget?")
+        XCTAssertEqual(sources.count, 2); XCTAssertEqual(Set(sources.map(\.title)), ["Budget", "Schedule"])
+        XCTAssertTrue(sources.contains { $0.text.contains("forty two") }); XCTAssertTrue(sources.allSatisfy { $0.page == 1 })
+        XCTAssertEqual(library.active, active); XCTAssertEqual(library.page, page)
+        try DocumentQuestionPolicy.validate(question: "What is the budget?", excerpts: sources)
+        let payload = try DemoBaseten.payload(task: "document_qa", text: "What is the budget?", image: nil, images: [], documents: sources)
+        XCTAssertTrue(String(data: try JSONSerialization.data(withJSONObject: payload), encoding: .utf8)!.contains("untrusted source data"))
+        XCTAssertThrowsError(try DocumentQuestionPolicy.validate(question: String(repeating: "a", count: 1001), excerpts: sources))
+    }
+    func testReferencesMustExistAndMissingEvidenceCannotBecomeAnswer() throws {
+        let source = DocumentExcerpt(id: "s1", title: "Notes", page: 2, text: "The code is violet.")
+        func result(_ citations: [String]) throws -> AIResult {
+            try JSONDecoder().decode(AIResult.self, from: JSONSerialization.data(withJSONObject: ["text":"Unsupported guess", "citations":citations]))
+        }
+        XCTAssertThrowsError(try DocumentQuestionPolicy.supportedAnswer(result(["made-up"]), excerpts: [source]))
+        XCTAssertThrowsError(try DocumentQuestionPolicy.supportedAnswer(result(["s1","s1"]), excerpts: [source]))
+        XCTAssertTrue(try DocumentQuestionPolicy.supportedAnswer(result([]), excerpts: [source]).0.contains("could not find"))
+        XCTAssertEqual(try DocumentQuestionPolicy.supportedAnswer(result(["s1"]), excerpts: [source]).1, [source])
+    }
+    @MainActor func testControllerAnswersAndCancellationRejectsLateResults() async throws {
+        let (root, library, ids) = try await fixture(); defer { try? FileManager.default.removeItem(at: root) }
+        let questions = DocumentQuestions(); var completed = false
+        questions.ask("When is the workshop?", ids: ids, library: library, request: { _, sources in
+            let source = sources.first { $0.title == "Schedule" }!
+            return try JSONDecoder().decode(AIResult.self, from: JSONSerialization.data(withJSONObject: ["text":"Ten on Friday.", "citations":[source.id]]))
+        }, completion: { completed = $0 })
+        for _ in 0..<100 where questions.busy { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertTrue(completed); XCTAssertEqual(questions.answer, "Ten on Friday."); XCTAssertEqual(questions.sources.first?.title, "Schedule")
+        questions.ask("What is the budget?", ids: ids, library: library, request: { _, sources in
+            try? await Task.sleep(for: .milliseconds(300))
+            return try JSONDecoder().decode(AIResult.self, from: JSONSerialization.data(withJSONObject: ["text":"Late result", "citations":[sources[0].id]]))
+        }, completion: { _ in XCTFail("Cancelled question completed") })
+        try await Task.sleep(for: .milliseconds(80)); questions.cancel()
+        try await Task.sleep(for: .milliseconds(350)); XCTAssertTrue(questions.answer.isEmpty); XCTAssertFalse(questions.busy)
+    }
+    @MainActor func testLiveMultiDocumentQuestionOnPhone() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_DOCUMENT_QA"] == "1" else { throw XCTSkip("Opt-in live AI check") }
+        guard DemoAccess.configured else { throw XCTSkip("Selected AI provider needs its Keychain credential") }
+        let (root, library, ids) = try await fixture(); defer { try? FileManager.default.removeItem(at: root) }
+        let questions = DocumentQuestions(); var success = false
+        questions.ask("When does the workshop begin and what is its budget?", ids: ids, library: library, completion: { success = $0 })
+        for _ in 0..<500 where questions.busy { try await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertTrue(success, questions.status)
+        XCTAssertEqual(Set(questions.sources.map(\.title)), ["Budget", "Schedule"])
+        let answer = questions.answer.lowercased()
+        XCTAssertTrue(answer.contains("ten") || answer.contains("10"))
+        XCTAssertTrue(answer.contains("forty two") || answer.contains("forty-two") || answer.contains("42"))
+    }
+    @MainActor func testLiveDocumentAnswerOnConnectedPhone() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_DOCUMENT_QA"] == "1" else { throw XCTSkip("Opt-in live AI check") }
+        guard DemoAccess.configured else { throw XCTSkip("No selected-provider key saved in this iPhone's Keychain") }
+        let source = DocumentExcerpt(id: "synthetic-1", title: "Synthetic test document", page: 1, text: "The secret color for this synthetic workshop is violet. The workshop has forty two seats.")
+        let result = try await AIClient.request(task: "document_qa", text: "What is the workshop color and how many seats are there?", documents: [source])
+        let supported = try DocumentQuestionPolicy.supportedAnswer(result, excerpts: [source])
+        XCTAssertTrue(supported.0.lowercased().contains("violet")); XCTAssertEqual(supported.1.map(\.id), [source.id])
+        let reader = HapticReader()
+        guard reader.supportsHaptics else { throw XCTSkip("Physical haptics unavailable") }
+        reader.load(Morse.translate("yes").cells, mode: .morse); reader.play()
+        for _ in 0..<200 where reader.isPlaying { try await Task.sleep(for: .milliseconds(50)) }
+        XCTAssertNil(reader.error); XCTAssertFalse(reader.isPlaying)
+    }
+}

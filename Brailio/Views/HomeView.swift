@@ -8,7 +8,7 @@ import AVFoundation
 
 /// All primary workflows use the same fixed six zones and four navigation zones.
 struct HomeView: View {
-    enum Screen: String { case home = "Home", write = "Write", read = "Read", talk = "Talk", find = "Find", go = "Go", learn = "Learn", settings = "Settings", notes = "Notes", places = "Places", route = "Route", saved = "Saved places", trackers = "Bluetooth tags", documents = "Documents", library = "My library", online = "Online PDFs", storage = "Saved", objects = "Saved objects" }
+    enum Screen: String { case questions = "Ask documents", questionDocuments = "Choose documents", questionSources = "Answer sources", home = "Home", write = "Write", read = "Read", talk = "Talk", find = "Find", go = "Go", learn = "Learn", settings = "Settings", notes = "Notes", places = "Places", route = "Route", saved = "Saved places", trackers = "Bluetooth tags", documents = "Documents", library = "My library", online = "Online PDFs", storage = "Saved", objects = "Saved objects" }
     @EnvironmentObject private var reader: HapticReader
     @StateObject private var labels = HapticReader()
     @Environment(\.scenePhase) private var phase
@@ -18,6 +18,10 @@ struct HomeView: View {
     @StateObject private var room = RoomCamera()
     @StateObject private var ink = Handwriting()
     @StateObject private var documents = DocumentLibrary()
+    @StateObject private var questions = DocumentQuestions()
+    @State private var questionSelection: Set<UUID> = []
+    @State private var questionWriting = ""
+    @State private var writingQuestion = false
     @StateObject private var guide = RouteGuide()
     @StateObject private var navigationHaptics = NavigationHaptics()
     @Environment(\.openURL) private var openURL
@@ -102,6 +106,7 @@ struct HomeView: View {
     private var statusText: String {
         if screen == .write { return handwritingText.isEmpty ? "empty" : handwritingText }
         if screen == .find { return room.message }
+        if [.questions, .questionSources, .questionDocuments].contains(screen) { return questions.status + " " + String(questionSelection.count) + " documents selected" }
         if screen == .documents || screen == .library || screen == .online { return documents.status }
         if screen == .read, let book = documents.current { return "\(book.title). page \(documents.page + 1) of \(book.pages). \(notice)" }
         if screen == .go || screen == .route { return guide.guiding && guide.suspended ? "Guidance paused for exploration. Resume to continue." : guide.location == nil && !guide.guiding ? "Location required." : guide.status }
@@ -183,7 +188,7 @@ struct HomeView: View {
         .onChange(of: pages.count) { _, count in if page >= count { page = max(0, count - 1); focused = nil } }
         .onChange(of: phase) { _, phase in
             appPhase=phase
-            if phase == .background { stopAll(); room.discardRoom() }
+            if phase == .background { questions.cancel(); stopAll(); room.discardRoom() }
             else if phase == .inactive { reader.stop(); labels.stop(); guide.suspendFeedback(); navigationHaptics.stop() }
             else { readingLabel=false; resumeLiveFeedback() }
         }
@@ -199,11 +204,17 @@ struct HomeView: View {
                 busy = false; photo = nil
             }
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, .pdf]) { result in
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, .pdf], allowsMultipleSelection: true) { result in
             Task {
                 do {
-                    let url = try result.get(); busy = true
-                    try await documents.importFile(url); if screen == .read { loadDocumentPage(play: false) } else { open(.read) }
+                    let urls = try result.get(); busy = true
+                    var imported: Set<UUID> = [], failures = 0
+                    for url in urls {
+                        do { try await documents.importFile(url); if let id = documents.active { imported.insert(id) } }
+                        catch { failures += 1 }
+                    }
+                    if !imported.isEmpty { questionSelection = imported; questions.clear(); open(.documents) }
+                    feedback("Imported \(imported.count) documents. \(failures) failed. Ask documents uses matching passages with AI.")
                 } catch { fail(error.localizedDescription) }
                 busy = false
             }
@@ -215,6 +226,7 @@ struct HomeView: View {
                 switch item.id {
                 case "draft": draft = value
                 case "read": documents.close(); reading = value; reader.load(TactileEncoding.translate(value).cells)
+                case "question": questionWriting = value
                 case "documentQuery": documentQuery = value
                 case "documentURL": downloadLink(value)
                 case "reply": conversation.transcript = value
@@ -247,7 +259,7 @@ struct HomeView: View {
                 Text(route.provider.title).font(.system(size: 14, weight: .regular)).foregroundStyle(.primary).lineLimit(1).accessibilityIdentifier("routeAttribution")
             }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("routeSummary")
         } else if screen == .read, let cell = reader.current {
-            HStack { Text(cell.label).font(.system(.title2, design: .rounded, weight: .bold)).lineLimit(2); Spacer(); if reader.mode == .braille { BrailleDots(dots: cell.dots, active: reader.activeDot) } else { Text(cell.label == "Space" ? "/" : Morse.code(cell.label)).font(.title2.monospaced()).accessibilityLabel("Morse " + Morse.code(cell.label)) }; Text((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count)").font(.caption).accessibilityIdentifier("readerPosition") }.padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+            HStack { Text(cell.label).font(.system(.title2, design: .rounded, weight: .bold)).lineLimit(2); Spacer(); if reader.mode == .braille { BrailleDots(dots: cell.dots, active: reader.activeDot) } else { Text(cell.label == "Space" ? "/" : Morse.code(cell.label)).font(.title2.monospaced()).accessibilityLabel("Morse " + Morse.code(cell.label)) }; Text((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count)").font(.caption) }.accessibilityElement(children: .ignore).accessibilityAddTraits(.isStaticText).accessibilityLabel((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count). " + cell.label + ". " + (reader.mode == .morse ? "Morse " + Morse.code(cell.label) : "Dots " + cell.dots.sorted().map(String.init).joined(separator: " "))).accessibilityIdentifier("readerPosition").padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
         } else {
             VStack(spacing: 6) {
                 Text(previewText).font(.system(.headline, design: .rounded)).lineLimit(2).minimumScaleFactor(0.7).accessibilityIdentifier("surfaceStatus")
@@ -258,6 +270,9 @@ struct HomeView: View {
     private var previewText: String {
         switch screen {
         case .home: return focused.flatMap { id in (allActions + footer).first(where: { $0.id == id })?.title } ?? "Brailio"
+        case .questions: return questions.busy ? questions.status : questions.answer.isEmpty ? (questionWriting.isEmpty ? questions.status : questionWriting) : questions.answer
+        case .questionDocuments: return "Selected \(questionSelection.count) of \(documents.documents.count). Up to ten documents and six hundred pages."
+        case .questionSources: return "\(questions.sources.count) source passages. Double tap a source to feel its title, page and text."
         case .documents, .library, .online: return documentQuery.isEmpty ? documents.status : documentQuery + ". " + documents.status
         case .write: return !ink.preview.isEmpty ? ink.preview : handwritingText.isEmpty ? "Write a word" : String(handwritingText.suffix(70))
         case .talk: return page == 0 ? (draft.isEmpty ? "Empty message" : String(draft.suffix(70))) : String(conversation.transcript.suffix(70))
@@ -273,8 +288,8 @@ struct HomeView: View {
         }
     }
     private var handwritingText: String {
-        get { writingDestination ? destinationWriting : writingSearch ? searchWriting : writingObject ? objectWriting : draft }
-        nonmutating set { if writingDestination { destinationWriting = newValue } else if writingSearch { searchWriting = newValue } else if writingObject { objectWriting = newValue } else { draft = newValue } }
+        get { writingQuestion ? questionWriting : writingDestination ? destinationWriting : writingSearch ? searchWriting : writingObject ? objectWriting : draft }
+        nonmutating set { if writingQuestion { questionWriting = newValue } else if writingDestination { destinationWriting = newValue } else if writingSearch { searchWriting = newValue } else if writingObject { objectWriting = newValue } else { draft = newValue } }
     }
     private var directPanel: AnyView? {
         if screen == .write && page == 0 {
@@ -298,7 +313,11 @@ struct HomeView: View {
     }
     private func completeWriting() {
         ink.clear()
-        if writingDestination {
+        if writingQuestion {
+            let query = questionWriting.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !query.isEmpty else { feedback("empty"); return }
+            writingQuestion = false; back(); askDocuments()
+        } else if writingDestination {
             let query=destinationWriting.trimmingCharacters(in:.whitespacesAndNewlines)
             guard !query.isEmpty else { feedback("empty"); return }
             destination=query; writingDestination=false; back(); startNavigation(query)
@@ -370,7 +389,7 @@ struct HomeView: View {
     private func feedback(_ text: String) { continuousBook = false; pending?.cancel(); reader.stop(); notice = text; playLabel(text) }
     private func fail(_ text: String) { continuousBook = false; reader.stop(); notice = text; if screen == .find { room.message = text }; if [.documents, .library, .online].contains(screen) { documents.status = text }; playLabel("error") }
     private func stopAll(keepRoom: Bool = false) { readingLabel=false; navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); if keepRoom { room.suspendFeedback() } else { room.stop() }; pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
-    private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }
+    private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingQuestion = false; writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }
         if next == .find { room.start() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
     /// Faith keeps camera tracking alive while the request is entered, so the scan and AR world survive.
     private func openObjectWriting() {
@@ -378,7 +397,7 @@ struct HomeView: View {
         screen = .write; page = 0; focused = nil; lastControl = nil; notice = "write"
         writingSearch = false; writingDestination = false; objectWriting = ""; writingObject = true; playLabel("draw")
     }
-    private func back(keepRoom: Bool = false) { let keep = keepRoom || (screen == .write && writingObject); if screen == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(keepRoom: keep); clearDraftRequested = false; clearAllRequested = false; screen = history.popLast() ?? .home; page = 0; focused = nil; lastControl = nil; notice = screen.rawValue.lowercased(); if screen == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }; if screen == .find { room.start() }; playLabel(screen.rawValue.lowercased()) }
+    private func back(keepRoom: Bool = false) { if screen == .questions { questions.cancel() }; let keep = keepRoom || (screen == .write && writingObject); if screen == .write { writingQuestion = false; writingObject = false; writingSearch = false; writingDestination = false }; stopAll(keepRoom: keep); clearDraftRequested = false; clearAllRequested = false; screen = history.popLast() ?? .home; page = 0; focused = nil; lastControl = nil; notice = screen.rawValue.lowercased(); if screen == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }; if screen == .find { room.start() }; playLabel(screen.rawValue.lowercased()) }
     private func nextPage() { clearDraftRequested = false; clearAllRequested = false; pending?.cancel(); reader.stop(); page = (page + 1) % pages.count; focused = nil; lastControl = nil; feedback("page \(page + 1)") }
     private func cuePattern(_ label: String, _ dots: Set<Int>) { readingLabel=true; navigationHaptics.stop(); reader.stop(); labels.load([BrailleCell(label: label, dots: dots)], mode: .braille); labels.play(single: true) }
     private func entry(_ id: String, _ title: String, _ text: String) { pending?.cancel(); reader.stop(); entry = Entry(id: id, title: title, current: text) }
@@ -449,21 +468,46 @@ struct HomeView: View {
                 action("bookLibrary", "Library", "books.vertical") { open(.library) },
                 action("bookClose", "Close book", "xmark", enabled: documents.active != nil) { continuousBook = false; documents.close(); reading = "hello"; reader.load(TactileEncoding.translate(reading).cells); feedback("closed") }
             ], [action("readSave", "Save text", "square.and.arrow.down", enabled: !reading.isEmpty) { saveNote(reading) },
-                action("readSaved", "Saved", "tray.full") { open(.storage) }]]
+                action("readSaved", "Saved", "tray.full") { open(.storage) },
+                action("bookAsk", "Ask this book", "questionmark.bubble", enabled: documents.active != nil) { if let id = documents.active, questionSelection != [id] { questionSelection = [id]; questions.clear() }; openQuestions() }]]
+        case .questions:
+            return [[action("questionWrite", "Write question", "hand.draw", enabled: !questions.busy && !questionSelection.isEmpty) { open(.write); writingQuestion = true; questionWriting = "" },
+                     action("questionChoose", "Choose documents", "doc.on.doc", value: "\(questionSelection.count)", enabled: !questions.busy) { open(.questionDocuments) },
+                     action("questionAsk", "Ask AI", "sparkles", enabled: !questionWriting.isEmpty && !questions.busy && !questionSelection.isEmpty) { askDocuments() },
+                     action("questionRead", "Read answer", "waveform", enabled: !questions.answer.isEmpty) { labels.stop(); reader.playText(ReadablePage.prepare(questions.answer).text) },
+                     action("questionSources", "Sources", "text.book.closed", enabled: !questions.sources.isEmpty) { open(.questionSources) },
+                     action("questionStop", "Stop", "stop.fill") { questions.cancel(); reader.stop(); feedback("stopped") }],
+                    [action("questionType", "Type question", "keyboard", enabled: !questions.busy) { entry("question", "Companion document question", questionWriting) },
+                     action("questionReview", "Review question", "waveform", enabled: !questionWriting.isEmpty) { reader.playText(ReadablePage.prepare(questionWriting).text) },
+                     action("questionSave", "Save answer", "square.and.arrow.down", enabled: !questions.answer.isEmpty) { saveNote(questions.answer + " " + questions.sources.map(\.label).joined(separator: " ")) },
+                     action("questionPrivacy", "How it works", "info.circle") { feedback("Asking sends up to twelve matching passages from selected files to AI. Answers may be wrong. Review Sources. Up to ten documents and six hundred pages.") }]]
+        case .questionDocuments:
+            return [[action("questionAll", "Select all", "checkmark.circle", enabled: documents.documents.count <= 10) { questionSelection = Set(documents.documents.map(\.id)); questions.clear(); feedback("all selected") },
+                     action("questionNone", "Clear selection", "xmark") { questionSelection = []; questions.clear(); feedback("selection cleared") },
+                     action("questionDone", "Use selection", "checkmark", enabled: !questionSelection.isEmpty) { back() }]] + chunks(documents.documents.enumerated().map { index, item in
+                         action("questionDoc\(index)", "Document \(index + 1)", "doc.text", value: item.title, selected: questionSelection.contains(item.id)) {
+                             if questionSelection.contains(item.id) { questionSelection.remove(item.id) }
+                             else if questionSelection.count < 10 { questionSelection.insert(item.id) }
+                             else { feedback("choose up to ten documents"); return }
+                             questions.clear(); feedback(questionSelection.contains(item.id) ? "selected" : "removed")
+                         }
+                     })
+        case .questionSources:
+            return chunks(questions.sources.enumerated().map { index, source in action("questionSource\(index)", "Source \(index + 1)", "doc.text", value: source.label) { labels.stop(); reader.playText(ReadablePage.prepare(source.label + " " + source.text).text) } })
         case .documents:
             return [[
                 action("docWrite", "Write search", "hand.draw") { searchWriting = ""; open(.write); writingSearch = true },
-                action("docDraft", "Search draft", "doc", enabled: !draft.isEmpty) { documentQuery = draft; searchLibraryFirst() },
+                action("docAsk", "Ask documents", "questionmark.bubble", enabled: !documents.documents.isEmpty) { openQuestions() },
                 action("docLibrary", "My library", "books.vertical") { documentQuery = ""; open(.library) },
                 action("docFiles", "Phone Files", "folder") { importing = true },
                 action("docOnline", "Online PDFs", "globe", enabled: !documentQuery.isEmpty && !documents.busy) { searchDocumentsOnline() },
                 action("docLink", "PDF link", "link") { entry("documentURL", "Direct HTTPS PDF or text link", "") }
-            ], [action("docType", "Type search", "keyboard") { entry("documentQuery", "Companion document search", documentQuery) },
+            ], [action("docDraft", "Search draft", "doc", enabled: !draft.isEmpty) { documentQuery = draft; searchLibraryFirst() }, action("docType", "Type search", "keyboard") { entry("documentQuery", "Companion document search", documentQuery) },
                 action("docPaste", "Paste link", "doc.on.clipboard") { if let link = UIPasteboard.general.string { downloadLink(link) } else { feedback("empty") } },
                 action("docLimits", "Search scope", "info.circle") { feedback("Library first. Phone Files opens Apple file search. Online searches Internet Archive public PDFs. Other sites need a direct link.") }]]
         case .library:
             let matches = documents.matching(documentQuery)
-            let controls = [action("libraryOnline", "Search online", "globe", enabled: !documentQuery.isEmpty && !documents.busy) { searchDocumentsOnline() }, action("libraryFiles", "Phone Files", "folder") { importing = true }]
+            let controls = [action("libraryOnline", "Search online", "globe", enabled: !documentQuery.isEmpty && !documents.busy) { searchDocumentsOnline() }, action("libraryFiles", "Phone Files", "folder") { importing = true }, action("libraryAsk", "Ask documents", "questionmark.bubble", enabled: !documents.documents.isEmpty) { openQuestions() }]
             return [controls] + chunks(matches.enumerated().map { index, item in action("library\(index)", "Book \(index + 1)", "book", value: item.title) { documents.select(item.id); open(.read) } })
         case .online:
             return chunks(documents.results.enumerated().map { index, item in action("online\(index)", "PDF \(index + 1)", "arrow.down.doc", value: item.title, enabled: !busy) {
@@ -573,7 +617,7 @@ struct HomeView: View {
                      action("settingsCodeGuide", "Code guide", "info.circle") { feedback(TactileMode.current == .morse ? "Morse uses short dots and long dashes. Learn has examples." : "Braille uses six timed dot slots. Learn has examples.") }],
                     [action("settingsClear", "Clear data", "trash") { clearAllRequested = true; feedback("confirm clear") },
                      action("settingsConfirmClear", "Confirm clear", "trash", enabled: clearAllRequested) {
-                         reader.load([]); draft = ""; reading = ""; notesData = Data(); practiced = ""; trackerNames = Data(); room.deletePins(); documents.deleteAll(); UserDefaults.standard.removeObject(forKey: "savedPlaces"); clearAllRequested = false; feedback("cleared")
+                         questions.clear(); questionSelection = []; questionWriting = ""; reader.load([]); draft = ""; reading = ""; notesData = Data(); practiced = ""; trackerNames = Data(); room.deletePins(); documents.deleteAll(); UserDefaults.standard.removeObject(forKey: "savedPlaces"); clearAllRequested = false; feedback("cleared")
                      },
                      action("settingsCancelClear", "Cancel", "xmark") { clearAllRequested = false; feedback("cancelled") },
                      action("settingsVoice", "Voice check", "speaker.wave.2", value: spokenFindResults ? "On" : "Off", selected: spokenFindResults) { spokenFindResults.toggle(); feedback(spokenFindResults ? "voice on" : "voice off") }]]
@@ -592,6 +636,19 @@ struct HomeView: View {
             let names = (try? JSONDecoder().decode([String: String].self, from: trackerNames)) ?? [:]
             let controls = [action("tagScan", scanner.scanning ? "Stop" : "Scan", "antenna.radiowaves.left.and.right") { if scanner.scanning { scanner.stop(); feedback("stopped") } else { scanner.start() } }, action("tagName", "Name tag", "pencil", enabled: selectedTracker != nil) { entry("tag", "Companion tag name", "") }]
             return [controls] + chunks(scanner.trackers.enumerated().map { index, tracker in action("tag\(tracker.id)", "Tag \(index + 1)", "sensor.tag.radiowaves.forward", value: names[tracker.id.uuidString] ?? tracker.name) { selectedTracker = tracker.id; scanner.selected = tracker.id; focused = nil; reader.playText(names[tracker.id.uuidString] ?? tracker.name) } })
+        }
+    }
+    private func openQuestions() {
+        questionSelection.formIntersection(Set(documents.documents.map(\.id)))
+        if questionSelection.isEmpty, let id = documents.active ?? documents.documents.first?.id { questionSelection = [id] }
+        open(.questions)
+    }
+    private func askDocuments() {
+        pending?.cancel(); reader.stop(); labels.stop(); readingLabel = false
+        questions.ask(questionWriting, ids: questionSelection, library: documents) { success in
+            guard screen == .questions, phase == .active else { return }
+            if success { labels.stop(); readingLabel = true; reader.playText(ReadablePage.prepare(questions.answer).text) }
+            else { feedback(questions.status) }
         }
     }
     private func selectTactileMode(_ mode: TactileMode) {

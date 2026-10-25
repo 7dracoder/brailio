@@ -31,6 +31,7 @@
 		68325DA5C642F00FAD924A58 /* ProximityVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA96346D5FBFE2F5C18446A9 /* ProximityVerification.swift */; };
 		70517167FAE3F43D66106BCB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF1BE4B500A72362614BE38 /* HomeView.swift */; };
 		70A739A4592DF43E49027669 /* InkLetterMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */; };
+		751097F7E4CFC61BA4C0C189 /* DemoBaseten.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */; };
 		825CDDD9677CC0E94DD5BFCB /* GoogleRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB4210FDAF0C1AA712A6708 /* GoogleRouting.swift */; };
 		85B1251D736B8C59D8D1B877 /* LiveDocumentIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629AEB3DCB129578D4F70A28 /* LiveDocumentIntegrationTests.swift */; };
 		8DAD913EA22C5F02BD5E6A36 /* DestinationResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */; };
@@ -106,6 +107,7 @@
 		B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentLibrary.swift; sourceTree = "<group>"; };
 		B1628ED233B392E8626383F6 /* TextImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextImport.swift; sourceTree = "<group>"; };
 		C8F26CF84060382DC04811B1 /* WholeWordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WholeWordTests.swift; sourceTree = "<group>"; };
+		CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBaseten.swift; sourceTree = "<group>"; };
 		CF462EE5B3F2255FD0FD1EA1 /* AppleMapsVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMapsVerification.swift; sourceTree = "<group>"; };
 		D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteAlignment.swift; sourceTree = "<group>"; };
 		D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAccess.swift; sourceTree = "<group>"; };
@@ -129,6 +131,7 @@
 				F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */,
 				4518F16EF5BC5A47FD50C616 /* Conversation.swift */,
 				D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */,
+				CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */,
 				26A39AB27F95668DCC24B24A /* DemoGemini.swift */,
 				F56A00B7136989238B79A213 /* DemoVerification.swift */,
 				29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */,
@@ -345,6 +348,7 @@
 				F73581C5C471FA076041F260 /* Components.swift in Sources */,
 				3148EEB40C4F89598A146868 /* Conversation.swift in Sources */,
 				ECAADEDAA8A054AC052F8BAF /* DemoAccess.swift in Sources */,
+				751097F7E4CFC61BA4C0C189 /* DemoBaseten.swift in Sources */,
 				0DF836F7521AB563CA98F6B9 /* DemoGemini.swift in Sources */,
 				195791F1DC83990C560114B6 /* DemoVerification.swift in Sources */,
 				8DAD913EA22C5F02BD5E6A36 /* DestinationResolution.swift in Sources */,
