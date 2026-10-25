@@ -8,8 +8,8 @@ struct AIConnectionView: View {
     var body: some View {
         VStack(spacing:24) {
             Text("Private demo connection").font(.title2.bold())
-            Text("The Baseten key stays in this iPhone's Keychain. It is not included in the app or repository.").font(.body)
-            SecureField("Baseten API key",text:$key).textFieldStyle(.roundedBorder).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive().accessibilityIdentifier("demoKeyField")
+            Text("The Gemini API key stays in this iPhone's Keychain. It is not included in the app or repository.").font(.body)
+            SecureField("Gemini API key",text:$key).textFieldStyle(.roundedBorder).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive().accessibilityIdentifier("demoKeyField")
             Button("Save and test") {
                 do { try DemoAccess.save(key.trimmingCharacters(in:.whitespacesAndNewlines)); key=""; Task { await connection.check() } }
                 catch { message=error.localizedDescription }

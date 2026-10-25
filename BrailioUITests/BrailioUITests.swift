@@ -41,7 +41,7 @@ final class BrailioUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["surfaceStatus"].label, "a")
         choose("navNext", in: app); choose("writeSave", in: app)
         XCTAssertEqual(app.scrollViews.count, 0)
-        choose("navBack", in: app); choose("navNext", in: app); choose("homeNotes", in: app)
+        choose("navBack", in: app); choose("navNext", in: app); choose("homeSaved", in: app); choose("storageNotes", in: app)
         XCTAssertTrue(app.buttons["note0"].exists)
         capture(app, "Tactile-Notes")
     }

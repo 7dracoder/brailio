@@ -5,8 +5,10 @@ enum ProximityFeedback {
         guard distance.isFinite, distance >= 0, scale.isFinite, scale > 0 else { return nil }
         return 0.18 + 0.82 * exp(-distance / scale)
     }
-    static func object(distance: Double) -> RouteFeedback {
+    /// Facing more than 90 degrees away while still out of reach gives soft double taps, as in Faith.
+    static func object(distance: Double, angle: Double = 0) -> RouteFeedback {
         guard let value=strength(distance:distance,scale:2) else { return .uncertain }
+        if distance > 0.6, abs(angle) > 90 { return .uncertain }
         return RouteFeedback(kind:.approaching,strength:value)
     }
     static func route(_ assessment: RouteAssessment, length: Double, enabled: Bool) -> RouteFeedback {

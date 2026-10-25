@@ -12,10 +12,10 @@ struct AIResult: Codable {
 
 enum AIClient {
     static func request(task: String, text: String, image: Data? = nil, images: [Data] = []) async throws -> AIResult {
-        if DemoAccess.configured { return try await DemoBaseten.request(task:task,text:text,image:image,images:images) }
+        if DemoAccess.configured { return try await DemoGemini.request(task:task,text:text,image:image,images:images) }
         guard let raw = UserDefaults.standard.string(forKey: "backendURL"),
               let base = URL(string: raw), base.scheme == "https", base.host != nil else {
-            throw ServiceError.message("The AI connection needs companion setup. Baseten credentials stay on the server.")
+            throw ServiceError.message("The AI connection needs companion setup. Gemini credentials stay on the server.")
         }
         var request = URLRequest(url: base.appendingPathComponent("assist"))
         request.httpMethod = "POST"

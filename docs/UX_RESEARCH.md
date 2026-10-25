@@ -115,7 +115,7 @@ Automated synthetic routes exercise reverse travel, wrong turns, decreasing cros
 
 A 700 ms letter auto-commit was unsuitable for slow multi-stroke word writing. The revised canvas retains all strokes across pauses and treats recognition as a preview until Space or Done. This supports whole words and late dots/crossbars without premature clearing. System recognition/OCR is supplemented only by a conservative segmented print fallback; no claim covers all cursive handwriting.
 
-The user's private-demo preference superseded server-key provisioning for this demo. A device-only Keychain credential now permits direct Baseten inference; the source and binary contain no usable key. A physical-device check passed synthetic text and image inference. This must not be generalized to public-client credential distribution.
+The user's private-demo preference superseded server-key provisioning for this demo. A device-only Keychain credential now permits direct Gemini API inference; the source and binary contain no usable key. A physical-device check passed synthetic text and image inference with the earlier provider. This must not be generalized to public-client credential distribution.
 
 Apple Maps is the default and integrated using [MapKit for SwiftUI/UIKit](https://developer.apple.com/documentation/mapkit/mapkit-for-swiftui) and [MKDirections](https://developer.apple.com/documentation/mapkit/mkdirections). Destination completion starts resolution/routing automatically, with a choice for ambiguous results. The read-only map surface converts touch into route-point exploration and double-tap into instruction access. Native Apple Maps integration does not prove universal route quality or accessible sidewalks.
 

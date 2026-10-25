@@ -51,6 +51,17 @@ final class ProximityAndSurfaceTests:XCTestCase {
         let point=try XCTUnwrap(snapshot.position(in:box))
         XCTAssertEqual(point.y,0,accuracy:0.001);XCTAssertEqual(point.z,-1,accuracy:0.01)
     }
+    func testFaithBaseRayUsesLiveHorizontalPlaneAndNeverGuessesDepth() throws {
+        var camera=matrix_identity_float4x4;camera.columns.3=SIMD4(0,1,1,1)
+        let k=simd_float3x3(SIMD3(500,0,0),SIMD3(0,500,0),SIMD3(500,500,1))
+        let world=UUID()
+        let snapshot=SpatialSnapshot(frame:RoomFrame(jpeg:Data(),captured:Date()),features:[],geometry:SnapshotGeometry(camera:camera,intrinsics:k,resolution:CGSize(width:1000,height:1000),surfaces:[]),worldID:world)
+        let box=ObjectBox(x:0.1,y:0.45,width:0.1,height:0.1)
+        let placed=try XCTUnwrap(FaithFinding.place(box,snapshot:snapshot,currentWorld:world,planeHeights:[0]) { _,_,_ in nil })
+        XCTAssertEqual(placed.method,.measuredPlane);XCTAssertLessThan(placed.point.z,1);XCTAssertGreaterThan(placed.point.y,0)
+        XCTAssertNil(FaithFinding.place(box,snapshot:snapshot,currentWorld:world) { _,_,_ in nil })
+        XCTAssertNil(FaithFinding.place(box,snapshot:snapshot,currentWorld:UUID(),planeHeights:[0]) { _,_,_ in nil })
+    }
     func testUnclassifiedOrFloorSurfaceNeverInventsObjectDepth() {
         let floor=SpatialSurface(transform:matrix_identity_float4x4,center:.zero,extent:SIMD3(10,0,10),supportsObject:false)
         XCTAssertNil(floor.intersection(origin:SIMD3(0,1,1),direction:simd_normalize(SIMD3(0,-1,-1))))

@@ -1,82 +1,121 @@
-# Brailio for iPhone
+# Brailio
 
-An experimental native iPhone app for tactile reading, whole-word writing, conversations, named object positions and walking-route feedback. Inspired by [VibroBraille](https://devpost.com/software/vibrobraille-pc-to-braille-ai-relay).
+**Read, write, talk, find things and explore routes—through touch.**
 
-## Touch interaction
+Brailio is a native iPhone app designed for DeafBlind and nonspeaking people. It brings everyday tools into one tactile interface: feel a control's label, write with a finger, read text through Braille vibration patterns, find an object and follow walking-route cues.
 
-Menus use six fixed action zones and four fixed navigation zones: Back, Replay, Status and Next. Hold/slide to focus and feel a label; lift and double-tap to activate it. Next changes pages without scrolling. App-owned screens contain no scrolling lists/forms. Native Files, permission dialogs and companion entry retain their system interactions. VoiceOver is supported alongside direct tactile input.
+[Watch the demo](https://youtu.be/rZSWxz13-gI) · [Devpost](https://devpost.com/software/brailio) · [Design research](docs/UX_RESEARCH.md)
 
-Handwriting, room scanning and the tactile map have dedicated direct-touch panels. Text/icons support residual vision and companions; understanding vibration words requires learning the serial Braille code. This prototype is not yet a validated independent-use aid.
+## See the app
 
-## Whole-word writing
+| Home | Document reader | Apple Maps route |
+| :---: | :---: | :---: |
+| <img src="screenshots/Home.png" width="240" alt="Home with six large fixed actions: Read, Write, Talk, Find, Go and Learn"> | <img src="screenshots/Document-Reader.png" width="240" alt="Document reader with Braille cell preview, page controls, playback and bookmark position"> | <img src="screenshots/Apple-Tactile-Map.png" width="240" alt="Apple Maps walking route with a destination pin and explicit GPS uncertainty status"> |
 
-Write a complete print word across the canvas, lifting between strokes and letters. A pause of about 1.1 seconds updates a recognition preview and tactile read-back **without clearing the ink**. Add late dots/crossbars or continue writing after a pause. Space commits the current word and adds a separator; Done commits and completes the current workflow. Delete clears pending ink first.
+Demo screenshots show the interface; the tactile experience requires a physical iPhone. More examples are in [screenshots](screenshots).
 
-Recognition runs locally using iOS 27 PencilKit where available, then Vision OCR, with a conservative segmented print-letter fallback. Joined cursive relies on the system recognizer/OCR and is not universally reliable. Unclear ink remains available for correction. The alternative six-dot writer is reached through Done > Braille; its positions are `1 4 / 2 5 / 3 6`.
+## How touch works
 
-## Apple Maps navigation
+1. **Touch and hold** a control, or slide your finger across the screen, to focus it and feel its label.
+2. **Lift, then double-tap** to open the focused action.
+3. Use the fixed **Back, Replay, Status and Next** controls. Next moves between pages without scrolling.
 
-Apple Maps is the default and requires no Google Maps API key. **Go > Write destination > Done** waits for a usable location, resolves the destination, calculates an Apple walking route, opens the tactile map and starts guidance. Use draft, companion entry and saved destinations use the same path. Ambiguous results require choosing the intended place; an exact unique result or an explicit nearest/closest query can resolve automatically.
+App menus use six fixed action zones, so their positions stay predictable. Handwriting, room scanning and map exploration have dedicated touch surfaces. Apple's Files picker and permission dialogs retain system controls. Text, large icons, dark mode, Dynamic Type and VoiceOver also support companions and people with residual vision.
 
-On the map, hold/slide to feel the nearest route-instruction point. Double-tap opens that point's controls. Replay repeats its label. Panning/zoom gestures are disabled so the surface is used for tactile exploration. Tactile labels briefly take over the actuator, then active guidance resumes automatically. Resume is also available on the next action page.
+### How vibration becomes Braille
 
-- Reliable alignment: short approach pulses that strengthen and speed up as the remaining route gets shorter. The optional silent-alignment mode is on the route controls page.
-- Sustained deviation, wrong turn or reverse travel: stronger correction pulses.
-- Returning toward alignment: the long correction pulses ease, then the distinct approach pulses resume.
-- Unreliable/stale GPS or travel direction: a distinct two-short-pulse uncertainty pattern.
+A normal Braille character has six possible raised dots. Brailio plays those positions **one after another** as six timed slots: a pulse for a raised dot and a quiet slot for an empty dot, followed by a gap between characters. For example, **a** pulses in slot 1; **b** pulses in slots 1 and 2.
 
-Two distinct reliable fixes are needed to establish deviation. Replaying a cached GPS fix cannot confirm it. Route matching stays near previous progress to reduce jumps to future parallel streets or loops. Strength respects the user's intensity setting. The route's training page provides bounded three-second Strong, Soft, Silent and Uncertain tests. Leaving the route screen or backgrounding stops guidance. New route explicitly recalculates.
+This is a learned tactile code played through the phone's haptic engine. It does not create physical dots under the finger. Learn introduces the patterns, and Replay repeats a label or reading.
 
-Approach pulses continue at the final coordinate until Stop; that coordinate is a nearby checkpoint, not proof of a doorway or safe arrival. Silence cannot establish clear space, accessible sidewalks or a safe crossing. Continue using the usual mobility aid. Outdoor GPS accuracy and tactile interpretation still need supervised testing with intended users.
+## What you can do
 
-Optional Google routing and keyless Google Maps handoff remain on secondary pages. In-app Google routes require a separately configured, billing-enabled Google Routes server key and app token; no Google key is included. Opening an external map app stops Brailio's foreground guidance.
+| Feature | How it works |
+| --- | --- |
+| **Write** | Draw a whole print word with your finger. Pause to preview and feel the recognition; Space commits a word, and Done finishes. A six-dot Braille writer is also available. |
+| **Writing assistant** | Request spelling corrections or a continuation, review the suggestion through tactile playback, and choose whether to accept it. |
+| **Read** | Import a PDF or text file, open a direct HTTPS document link, or search imported titles and Internet Archive's public PDF catalog. Read page by page or continue through a book, with a saved reading position. |
+| **Talk** | Write a reply and show it full-screen or speak it aloud. A conversation partner's speech can be transcribed for tactile reading. |
+| **Find** | Hold the center control to scan, release, then write an object's name. AI identifies it in a current camera snapshot or scan snapshots; ARKit estimates its position, and approach taps get stronger and faster nearby. |
+| **Go** | Write a destination and choose Done. Brailio resolves the place, calculates an Apple Maps walking route and starts its tactile map and guidance. Ambiguous destinations require a choice. |
+| **Saved** | Find notes, places, object names with last-seen information, and imported documents together on the iPhone. |
+| **Learn** | Practice Braille and the tactile interaction patterns before using the other tools. |
 
-## Room scanning and object positions
+### Finding an object
 
-Find's center control starts a scan when held and finishes on release, bounded to 30 seconds. **No room movie is recorded or saved.** Up to 30 reduced still snapshots and projected AR feature points are kept temporarily. Write an object name and choose Done; AI examines up to eight scan snapshots, and sufficient nearby feature points can establish an estimated room position. Positioning first uses measured scene depth on supported hardware or tracked visual points. Smooth objects can also use a ray intersection with a classified table/seat surface, including surfaces detected later in the same scan. Floors, walls and unclassified surfaces are not used as automatic substitute object positions. Sparse/ambiguous geometry remains uncertain.
+The finder adapts the spatial flow from [Faith](https://github.com/7dracoder/Faith). It keeps AR tracking active while a name is entered and checks a fresh camera frame first. Gemini returns the object's image bounding box. Brailio uses available LiDAR depth, or a ray from the captured camera pose through the object's base to a detected or estimated surface, to establish an approximate 3D position.
 
-Saved names return to stored AR positions without repeated object inference. ARKit still needs the camera and motion sensors for tracking/relocalization; this is not camera-free navigation. Basic iPhone 17 does not provide Pro-model rear LiDAR, and the implementation does not assume it. Positions can drift and cannot follow moved objects.
+No room movie is saved. Temporary still snapshots support the search. During guidance the camera and motion sensors still run for AR tracking; repeated AI inference is not needed to approach a position already measured in that session. Facing away or losing reliable tracking produces a separate double-tap cue.
 
-Single approach pulses grow stronger and faster near the estimated object position. Status reads left/right/ahead/behind. Two short pulses indicate missing position/tracking instead of falsely signaling approach. The haptic loop updates its strength without restarting on every camera/GPS update. Tactile labels/confirmations briefly take over the actuator and guidance resumes afterward. A tap checks proximity to the saved position, **not object identity**. Wrong object stops guidance. Mark center can manually save a named surface position without AI. A geometrically valid position can guide immediately while map saving retries; if persistence fails, it is explicitly marked current-session-only. When an object is detected but depth is unavailable, hold center and slowly rescan the object and supporting surface; the name is retained automatically. Saved maps use complete file protection; temporary snapshots are cleared after saving/backgrounding. Settings > Clear data removes maps and local documents.
+A tap checks whether the phone is near the measured position. It does **not** prove that the item is correct; the user confirms the actual object. Positions belong to their camera session, can drift and do not follow moved objects. Saved last-seen information helps a later search, rather than guaranteeing an exact persistent indoor location. Mark center provides a manual surface-position option.
 
-## Reading, documents and conversations
+### Following a route
 
-Read > Documents checks imported document titles first, then Internet Archive's public PDF catalog when no local title matches. Results use fixed pages. Direct HTTPS PDF/text links are also supported. No Tavily/search key is required. Phone Files opens Apple's user-authorized picker for On My iPhone, iCloud and file providers; iOS prevents silently indexing other apps' private storage.
+Apple Maps is the default; no Google Maps key is needed. Hold and slide over the map to feel route-instruction points, then double-tap to open their controls.
 
-PDF and UTF-8 text files up to 40 MB are imported into private storage. Whole books have no 20,000-character cap: PDFs load page by page, scanned pages use local OCR, and text files use 2,400-character pages. Read book continues across pages while active. Page/cell bookmarks survive leaving the reader and relaunch. Restricted, locked or login-only documents are not bypassed.
+- **Approaching:** short pulses grow stronger and faster as the remaining route gets shorter.
+- **Wrong turn or sustained deviation:** longer correction pulses, easing as alignment improves.
+- **Uncertain location or direction:** two short pulses.
+- **Optional silent alignment:** available in route controls.
 
-Playback is a limited English teaching code, not a complete UEB/multilingual/math transcriber. Each cell has six dot time slots and two quiet gap slots. Common typography is normalized; unknown document symbols are announced as 'unsupported symbol'. OCR/handwriting can be wrong. Complex tables, equations and diagrams need additional work.
+Guidance runs in the foreground. Approach feedback continues at the final coordinate until Stop; proximity to that coordinate does not establish a safe entrance or crossing. Brailio supplements the user's usual mobility aid.
 
-Talk supports written replies, explicit display/speech, and optional partner speech transcription. Speaking is optional. Apple Speech may process audio online; microphone capture stops when leaving/backgrounding. Optional Bluetooth-tag pages provide foreground RSSI feedback, not AirTag/Find My access or precise distance.
+## Try it on an iPhone
 
-## Run the private demo
+You need a Mac with Xcode, an iPhone running **iOS 17 or later**, and an Apple signing team. Use a physical phone to feel haptics; the Simulator is useful for inspecting screens.
 
-1. Open `Brailio.xcodeproj` in Xcode, select your signing team and run on an iPhone. Deployment target: iOS 17+. Regenerate with `xcodegen generate` after editing `project.yml`.
-2. Settings > AI connection > Save and test stores **your own** Baseten key in this iPhone's Keychain using `WhenUnlockedThisDeviceOnly`. No usable key is bundled in the binary, stored in UserDefaults, committed to GitHub or provisioned to Vercel.
-3. Alternatively run `scripts/provision-private-demo.sh DEVICE_ID`. It reads the key with terminal echo disabled and passes it only through the device launch environment. Close/reopen the app after provisioning to remove that transient environment.
-4. Use Go > Write destination > Done for the Apple map workflow, or Find > hold/release scan > write name > Done for object identification.
+1. Clone this repository and open **Brailio.xcodeproj** in Xcode.
+2. Select the **Brailio** target, choose your signing team, connect the iPhone and run.
+3. Start with **Learn** to practice the touch controls and Braille patterns.
+4. For AI features, open **Settings → AI connection**, enter your own Gemini API key and choose **Save and test**. The key stays in that phone's Keychain.
+5. Try **Write**, then **Read**, **Talk**, **Find** or **Go**. Allow camera, location, microphone or speech access when the relevant feature needs it.
 
-Private demo mode calls Baseten directly over HTTPS using `zai-org/GLM-5.3-Flash`. It sends selected text or room snapshots to Baseten. Local handwriting, OCR and document reading do not require AI. Remove the key in AI connection when finished. For wider distribution, move to per-user backend authentication, scoped credentials and quotas; do not embed a shared provider key in a public client.
+Handwriting, document OCR, Braille playback and local storage do not require an AI key. AI requests and online document/place searches need an internet connection. The configured Gemini model must be available to your API account; its identifier is in [DemoGemini.swift](Brailio/Core/DemoGemini.swift).
 
-Optional Node backend: `backend/api/assist.js` and `backend/api/route.js`. Server-mode secrets are documented in `backend/.env.example`. The iPhone stores only the matching app access token for server mode. No server credentials are provisioned by this repository. The deployed backend rejects unauthenticated requests; its privacy/terms pages describe provider data flows. Rate limits are per instance, not global spending caps. Google route coordinates are sent only to the optional route endpoint/Google, not Baseten.
+An alternative private-device provisioning helper is [scripts/provision-private-demo.sh](scripts/provision-private-demo.sh). It reads the key with terminal echo disabled; close and reopen the app after provisioning to clear the transient launch environment.
 
-Local environment files, Vercel linkage, Xcode user data, signing credentials and build output are ignored by Git. This repository contains **no usable API credentials**.
+## Built with
 
-## Verification
+| Technology | Role |
+| --- | --- |
+| **SwiftUI / UIKit** | Native iPhone screens and direct-touch interaction |
+| **Core Haptics** | Timed Braille cells and guidance pulses |
+| **PencilKit / Vision** | On-device ink capture, handwriting recognition and OCR |
+| **ARKit** | Camera tracking, plane estimation, raycasting and supported-device LiDAR depth |
+| **MapKit / Core Location** | Apple place search, walking routes and location feedback |
+| **PDFKit** | PDF import and page-based reading |
+| **Apple Speech / speech synthesis** | Optional conversation transcription and spoken replies |
+| **Gemini API** | Object detection and direct-demo writing assistance |
+| **Snowflake Cortex** | Text correction/completion in the optional configured server mode |
+| **Node.js / Vercel** | Optional authenticated API backend and public privacy/terms pages |
+
+The backend lives in [backend](backend). Copy its [.env.example](backend/.env.example) into a local environment file and supply your own credentials. Server mode uses an app access token; provider credentials stay on the server. Optional Google Routes support requires a separately configured server key.
+
+## Privacy and current limits
+
+Notes, imported documents and saved items are stored locally. Handwriting and OCR run on device. AI actions send the selected text or camera snapshots to the configured provider; Apple Speech may process partner audio online. Saving an item alone does not upload it. Camera and microphone work stops when leaving the relevant flow or backgrounding. No usable provider key is bundled in the repository.
+
+Brailio is an experimental prototype that needs testing with DeafBlind users and orientation-and-mobility specialists. Its English Braille teaching code covers letters, numbers and common punctuation; full UEB contractions, multilingual text, equations and complex layouts remain future work. Handwriting, OCR, AI detections, AR positions and GPS can be wrong. A base iPhone does not gain LiDAR through this app.
+
+PDF/text imports support files up to 40 MB. Scanned PDF pages use local OCR; bookmarks persist. Online search covers the supported public catalog, not every document on the web. Phone documents are selected through Apple's Files picker rather than silently searched across other apps.
+
+## For developers
 
 ```sh
+# iOS unit and UI tests (choose an installed Simulator)
 xcodebuild -project Brailio.xcodeproj -scheme Brailio \
   -destination 'platform=iOS Simulator,name=iPhone 17' test
+
+# Backend tests
 node --test backend/tests/assist.test.js backend/tests/route.test.js
 ```
 
-Tests cover Braille, dot writing, whole-word ink recognition, retained ink across pauses, document/OCR/bookmarks, route-error intensity, GPS uncertainty, bends/parallel streets, provider handling and fixed UI flows. The opt-in live document test requires `BRAILIO_LIVE_DOCUMENTS=1` in the test runner. UI route fixtures verify interaction transitions; they do not substitute for live route verification.
+Tests cover Braille translation, writing, documents, route feedback, spatial placement, provider responses and fixed UI flows. Simulator and synthetic tests cannot establish real-room positioning accuracy or outdoor safety. This documentation update does not certify a new end-to-end hardware test.
 
-On the connected iPhone, the private Keychain connection passed real Baseten text and synthetic-image object inference. Apple place search and walking-route calculation also passed using public synthetic endpoints, returning seven route steps without accessing the user's location. The destination-Done-to-active-map flow and hold/double-tap map access were checked separately in the UI runner. These checks do not establish physical room-map precision, recognition of personal belongings, road safety or outdoor tactile usability.
+Project configuration is in [project.yml](project.yml); use `xcodegen generate` after changing that configuration. Research sources and design boundaries are in [docs/UX_RESEARCH.md](docs/UX_RESEARCH.md).
 
-See [UX research](docs/UX_RESEARCH.md) for primary technical references and research boundaries.
+## What's next
 
+Co-design and supervised usability testing with DeafBlind users; richer Braille language support; refreshable Braille display integration; stronger indoor relocalization; and per-user authentication and quotas for a wider release.
 
-### Proximity update verification
-
-The proximity update passed 51 iOS checks, including the complete destination/interactive-map UI flow and seven new proximity/surface tests. They cover monotonically stronger/faster approach pulses, non-silent endpoint feedback until Stop, rejected invalid distances, table-ray placement without tracked object points, rejection of unrelated floor/unclassified surfaces, and separate tactile-label completion. The focused reading/map regression checks and explicit Stop regression also passed. On the connected iPhone, the opt-in nine-second synthetic ramp completed all three stages with hardware haptics supported and no reported error. It does not validate real-room distance accuracy.
+Inspired by [VibroBraille](https://devpost.com/software/vibrobraille-pc-to-braille-ai-relay), with the object-positioning approach adapted from [Faith](https://github.com/7dracoder/Faith).

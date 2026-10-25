@@ -3,7 +3,7 @@ import Security
 
 /// Private-device demo credential. Never bundled, placed in UserDefaults, or synced to iCloud.
 enum DemoAccess {
-    private static let service = "com.brailio.demo.baseten"
+    private static let service = "com.brailio.demo.gemini"
     static var key: String {
         get {
             let query: [String: Any] = [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:service,kSecAttrAccount as String:"key",kSecReturnData as String:true]
@@ -21,7 +21,7 @@ enum DemoAccess {
         guard SecItemAdd(item as CFDictionary,nil) == errSecSuccess else { throw ServiceError.message("The demo key could not be saved securely.") }
     }
     static func bootstrap() {
-        if let value=ProcessInfo.processInfo.environment["BRAILIO_DEMO_BASETEN_KEY"], !value.isEmpty { try? save(value) }
+        if let value=ProcessInfo.processInfo.environment["BRAILIO_DEMO_GEMINI_KEY"], !value.isEmpty { try? save(value) }
     }
 }
 @MainActor final class ConnectionStatus: ObservableObject {
@@ -29,7 +29,7 @@ enum DemoAccess {
     @Published var checking = false
     func check() async {
         checking=true; defer { checking=false }
-        do { _ = try await AIClient.request(task:"correct",text:"hello"); state="Connected to Baseten" }
+        do { _ = try await AIClient.request(task:"correct",text:"hello"); state="Connected to Gemini" }
         catch { state=error.localizedDescription }
     }
 }

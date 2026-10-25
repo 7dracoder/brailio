@@ -37,9 +37,9 @@ final class WholeWordTests:XCTestCase {
         XCTAssertEqual(DestinationResolution.select("nearest cafe",places:places,location:origin)?.name,"Cafe south")
     }
     func testDemoPayloadContainsNoBundledCredentials() throws {
-        let payload=try DemoBaseten.payload(task:"correct",text:"helo",image:nil,images:[])
+        let payload=try DemoGemini.payload(task:"correct",text:"helo",image:nil,images:[])
         let data=try JSONSerialization.data(withJSONObject:payload)
         XCTAssertFalse(String(data:data,encoding:.utf8)!.contains("Authorization"))
-        XCTAssertThrowsError(try DemoBaseten.payload(task:"find_room",text:"keys",image:nil,images:[]))
+        XCTAssertThrowsError(try DemoGemini.payload(task:"find_room",text:"keys",image:nil,images:[]))
     }
 }
