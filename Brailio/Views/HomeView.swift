@@ -277,7 +277,7 @@ struct HomeView: View {
         case .storage: return "Saved on this iPhone: \(notes.count) notes, \(savedPlaces.count) places, \(room.pins.count) objects, \(documents.documents.count) books"
         case .notes: return notes.first.map { "Latest: " + $0.text } ?? "No notes yet. Write, then Save."
         case .objects: return room.pins.isEmpty ? "No saved objects yet. Find an object to save it." : "Double tap an object to find it again"
-        case .go: return (destination.isEmpty ? "Choose destination" : destination) + ". " + guide.provider.title
+        case .go: return (destination.isEmpty ? "Choose destination" : destination) + ". " + (guide.error ?? (guide.status.hasPrefix("No nearby") || guide.busy ? guide.status : guide.provider.title))
         case .route: return guide.guiding ? (guide.suspended ? "Explore paused. Resume to continue." : guide.status) : guide.current?.instructions ?? guide.status
         case .learn: return TactileMode.current.title + " " + Braille.alphabet[selectedLetter].0.uppercased() + (TactileMode.current == .morse ? " " + Morse.code(Braille.alphabet[selectedLetter].0) : "")
         case .settings: return "Tactile code: " + TactileMode.current.title
@@ -340,6 +340,16 @@ struct HomeView: View {
             if guide.route != nil {
                 open(.route)
             } else if guide.places.count > 1 { open(.places); feedback("choose destination") }
+            else { fail(guide.error ?? guide.status) }
+        }
+    }
+    private func searchWider() {
+        guard !destination.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { feedback("Write a destination first"); return }
+        guide.stop(); feedback("Searching within twenty kilometres")
+        Task {
+            await guide.findWider(destination)
+            guard screen == .go || screen == .places else { return }
+            if !guide.places.isEmpty { open(.places) }
             else { fail(guide.error ?? guide.status) }
         }
     }
@@ -565,10 +575,10 @@ struct HomeView: View {
                      action("goTerms", "Terms", "doc.text") { openURL(URL(string: "https://brailio-api.vercel.app/terms.html")!) }
                  ]]
         case .places:
-            return chunks(guide.places.enumerated().map { index, place in action("place\(index)", "Place \(index + 1)", "mappin", value: place.name ?? "") {
+            return chunks(guide.places.enumerated().map { index, place in action("place\(index)", "Place \(index + 1)", "mappin", value: (place.name ?? "Place") + ". " + DestinationResolution.distanceLabel(place,from:guide.location)) {
                 notice = place.name ?? "place"; reader.playText(place.name ?? "place")
                 Task { await guide.preview(place); if guide.route != nil && screen == .places { open(.route) } else { fail(guide.error ?? "route unavailable") } }
-            } })
+            } }) + [[action("placeWider", "Search wider", "magnifyingglass", enabled: !guide.busy) { searchWider() }]]
         case .route:
             return [[], [action("routeRead", "Read step", "waveform", enabled: guide.current != nil) { if let text = guide.current?.instructions { readingLabel=true; reader.playText(ReadablePage.prepare(text).text) } },
                      action("routeStart", guide.guiding ? "Resume" : "Start", "location.fill") { pending?.cancel(); reader.stop(); labels.stop(); readingLabel=false; focused = nil; guide.start() },

@@ -32,6 +32,7 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
     var onCue: ((TactileCue) -> Void)?
     var onFeedback: ((RouteFeedback) -> Void)?
     private let manager = CLLocationManager()
+    private var searchRequest=UUID()
     private var search: MKLocalSearch?
     private var directions: MKDirections?
     private var watchdog: Task<Void, Never>?
@@ -124,14 +125,33 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
         }
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { self.error = error.localizedDescription; if guiding { publish(.uncertain, message: "GPS unavailable. Two short pulses indicate uncertainty.") } }
-    func find(_ query: String) async {
-        guard let location, Date().timeIntervalSince(location.timestamp) < 20, location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 100 else { enable(); error = "Wait for a location fix, then search again."; return }
-        busy = true; error = nil; defer { busy = false }; search?.cancel()
-        let request = MKLocalSearch.Request(); request.naturalLanguageQuery = query
-        request.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 10_000, longitudinalMeters: 10_000)
+    func find(_ query: String, radius: Double = DestinationResolution.nearbyRadius) async {
+        guard let location, (-1...20).contains(Date().timeIntervalSince(location.timestamp)), location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 100 else { enable(); error = "Wait for a location fix, then search again."; return }
+        guard radius.isFinite, (1...20_000).contains(radius) else { error="Invalid search area."; return }
+        let id=UUID(); searchRequest=id
+        busy = true; error = nil; places=[]; search?.cancel()
+        status=radius <= DestinationResolution.nearbyRadius ? "Searching nearby places within five kilometres." : "Searching within twenty kilometres. Choose a result to start."
+        defer { if searchRequest == id { busy = false } }
+        let request = MKLocalSearch.Request(); request.naturalLanguageQuery = DestinationResolution.searchText(query)
+        request.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: radius * 2, longitudinalMeters: radius * 2)
+        if #available(iOS 18.0, *) { request.regionPriority = .required }
         let search = MKLocalSearch(request: request); self.search = search
-        do { places = try await search.start().mapItems; if places.isEmpty { status = "No places found. Try a more specific address." } }
-        catch { self.error = error.localizedDescription }
+        do {
+            let results=try await search.start().mapItems
+            try Task.checkCancellation(); guard searchRequest == id else { return }
+            places=DestinationResolution.nearby(results,location:location,radius:radius)
+            status=places.isEmpty ? "No nearby places found. Try a more specific name or Search wider." : "\(places.count) places, nearest first."
+        } catch is CancellationError { return }
+        catch {
+            guard searchRequest == id else { return }
+            if let mapError=error as? MKError, mapError.code == .placemarkNotFound { places=[]; status="No nearby places found. Try another name or Search wider." }
+            else { self.error=error.localizedDescription }
+        }
+    }
+    func findWider(_ query: String) async {
+        do { _ = try await waitForLocation(); try Task.checkCancellation(); await find(query,radius:20_000) }
+        catch is CancellationError { return }
+        catch { self.error=error.localizedDescription }
     }
     private func waitForLocation() async throws -> CLLocation {
         enable(); status="Getting your location"
@@ -156,7 +176,7 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
             _ = try await waitForLocation()
             await find(query); try Task.checkCancellation()
             guard error == nil, let location else { return }
-            guard let place=DestinationResolution.select(query,places:places,location:location) else { status=places.isEmpty ? "No places found" : "Choose the intended destination"; return }
+            guard let place=DestinationResolution.select(query,places:places,location:location) else { status=places.isEmpty ? "No nearby places found. Try another name or Search wider." : "Nearby places, nearest first. Choose the intended destination."; return }
             await preview(place)
         } catch is CancellationError { return } catch { self.error=error.localizedDescription; status=error.localizedDescription }
     }
@@ -222,7 +242,7 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
     func pauseForHapticFailure(_ message: String) { stop(); status = message; error = message }
     func next() { guard index < steps.count - 1 else { status = "End of route instructions. Confirm the destination yourself."; return }; index += 1; if let current { onCue?(.instruction(current.instructions)) } }
     func reroute() async { guard let selectedPlace else { return }; await preview(selectedPlace) }
-    func stop() { locationRequested = false; guiding = false; suspended = false; watchdog?.cancel(); watchdog = nil; manager.stopUpdatingLocation(); manager.stopUpdatingHeading(); heading=nil; lastHeadingAssessed = .distantPast; status = "Guidance stopped."; routeRequest = UUID(); busy = false; search?.cancel(); directions?.cancel(); publish(.paused, message: status) }
+    func stop() { locationRequested = false; guiding = false; suspended = false; watchdog?.cancel(); watchdog = nil; manager.stopUpdatingLocation(); manager.stopUpdatingHeading(); heading=nil; lastHeadingAssessed = .distantPast; status = "Guidance stopped."; routeRequest = UUID(); searchRequest=UUID(); busy = false; search?.cancel(); directions?.cancel(); publish(.paused, message: status) }
     private func publish(_ feedback: RouteFeedback, message: String) { self.feedback = feedback; status = message; if !suspended { onFeedback?(feedback) } }
     #if DEBUG
     func loadTestRoute(_ route: WalkingRoute) { self.route = route; path = RoutePath(route.points); progress = 0; filter = RouteDeviationFilter(); lastAssessed = .distantPast }

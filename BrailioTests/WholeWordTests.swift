@@ -53,3 +53,51 @@ final class WholeWordTests:XCTestCase {
         XCTAssertThrowsError(try DemoBaseten.payload(task:"find_room",text:"keys",image:nil,images:[]))
     }
 }
+
+
+final class NearbyDestinationTests: XCTestCase {
+    private let origin=CLLocation(latitude:37,longitude:-122)
+    private func place(_ name:String,metres:Double)->MKMapItem {
+        let item=MKMapItem(placemark:MKPlacemark(coordinate:.init(latitude:37+metres/111_000,longitude:-122)));item.name=name;return item
+    }
+    func testResultsAreNearestFirstEvenIfProviderRanksFarAwayFirst() {
+        let values=[place("Far cafe",metres:2000),place("Nearest cafe",metres:100),place("Middle cafe",metres:800)]
+        XCTAssertEqual(DestinationResolution.nearby(values,location:origin).map(\.name),["Nearest cafe","Middle cafe","Far cafe"])
+    }
+    func testFarOnlyOrFarExactMatchNeverStartsAnAutomaticRoute() {
+        let far=place("Library",metres:90_000)
+        XCTAssertNil(DestinationResolution.select("Library",places:[far],location:origin))
+        XCTAssertNil(DestinationResolution.select("nearest library",places:[far],location:origin))
+        XCTAssertTrue(DestinationResolution.nearby([far],location:origin).isEmpty)
+    }
+    func testExpandedResultsStillCannotAutoChooseDistantPlace() {
+        let far=place("Clinic",metres:12_000)
+        XCTAssertEqual(DestinationResolution.nearby([far],location:origin,radius:20_000).count,1)
+        XCTAssertNil(DestinationResolution.select("Clinic",places:[far],location:origin))
+    }
+    func testNearestRequestChoosesLocalBranchAndShowsDistance() {
+        let a=place("Cafe",metres:150),b=place("Cafe",metres:3000)
+        XCTAssertTrue(DestinationResolution.select("nearest cafe",places:[b,a],location:origin) === a)
+        XCTAssertNil(DestinationResolution.select("Cafe",places:[b,a],location:origin))
+        XCTAssertTrue(DestinationResolution.distanceLabel(a,from:origin).contains("metres away"))
+        XCTAssertEqual(DestinationResolution.searchText("Nearest Cafe"),"Cafe")
+    }
+    @MainActor func testLiveNearbySearchOnIPhoneIsBoundedAndDistanceSorted() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_NEARBY"] == "1" else { throw XCTSkip("Opt-in live local search") }
+        let guide=RouteGuide();defer { guide.stop() };guide.enable()
+        for _ in 0..<150 {
+            if let age=guide.locationAge,age<=6 { break }
+            try await Task.sleep(for:.milliseconds(200))
+        }
+        _ = try XCTUnwrap(guide.location)
+        await guide.find("coffee")
+        XCTAssertNil(guide.error);XCTAssertFalse(guide.places.isEmpty,guide.status)
+        let location=try XCTUnwrap(guide.location)
+        let distances=guide.places.map { DestinationResolution.distance($0,from:location) }
+        XCTAssertTrue(distances.allSatisfy { $0<=5000 })
+        // The phone can move slightly while searching; allow a small tie tolerance.
+        XCTAssertTrue(zip(distances,distances.dropFirst()).allSatisfy { $0 <= $1 + 10 })
+        let attachment=XCTAttachment(data:try JSONSerialization.data(withJSONObject:["results":distances.count,"nearestMetres":distances.first ?? -1,"farthestMetres":distances.last ?? -1]),uniformTypeIdentifier:"public.json")
+        attachment.name="Nearby-search-distances-no-coordinates";attachment.lifetime = .keepAlways;add(attachment)
+    }
+}
