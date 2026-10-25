@@ -1,0 +1,670 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		038BA3D330620131EAFF87B5 /* InkWordMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9401CE450A91315D33EEF3D6 /* InkWordMatcher.swift */; };
+		0BE5FA3DACD5E2F1E2E1A931 /* NavigationHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D1C6BC239D3A690A6258E0C /* NavigationHaptics.swift */; };
+		10181DE3E4A765E81FAEF9DB /* BrailioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC649B57A3B56D387A9ED25 /* BrailioUITests.swift */; };
+		195791F1DC83990C560114B6 /* DemoVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56A00B7136989238B79A213 /* DemoVerification.swift */; };
+		1D7BB178099747ECEC319506 /* AIConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD2BE430C0369AA2D49D957 /* AIConnectionView.swift */; };
+		21476A69141CE8E45C3E1A00 /* TactileRouteMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60760D93ECC01378B3ECC2E4 /* TactileRouteMap.swift */; };
+		23ABDAC4B4C2BE7FFD32226B /* RouteGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7862CE99FC254544A5E93479 /* RouteGuide.swift */; };
+		3148EEB40C4F89598A146868 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4518F16EF5BC5A47FD50C616 /* Conversation.swift */; };
+		31F0BDB492965355B2A096D9 /* DocumentLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */; };
+		47ECE4AFE8F2C9CE42610261 /* TactileSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B84F0F4655233BA5706359C /* TactileSurface.swift */; };
+		497E2C453897A5F92B858EEC /* TrackerScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC87574487C60D1E2007993 /* TrackerScanner.swift */; };
+		4CE37AA54EEF0336D3D998DF /* ObjectFinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1476107688FEA285BEE6DADF /* ObjectFinding.swift */; };
+		51E693DF5C4E2E46ED117CA0 /* SavedNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */; };
+		59A44796E6BBF04F0229F18A /* CommunicationSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */; };
+		5C570C7F7EA1C9EB4AFA4BD2 /* TextImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1628ED233B392E8626383F6 /* TextImport.swift */; };
+		5D6A7C912B85A8AD947B4AA9 /* BackendAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2E2945031B9E59B120690C /* BackendAccess.swift */; };
+		65BF125A26A6EA1F94EEE04E /* Handwriting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DF4242C28D2A9EC7D82B37 /* Handwriting.swift */; };
+		70517167FAE3F43D66106BCB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF1BE4B500A72362614BE38 /* HomeView.swift */; };
+		70A739A4592DF43E49027669 /* InkLetterMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */; };
+		751097F7E4CFC61BA4C0C189 /* DemoBaseten.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */; };
+		825CDDD9677CC0E94DD5BFCB /* GoogleRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB4210FDAF0C1AA712A6708 /* GoogleRouting.swift */; };
+		85B1251D736B8C59D8D1B877 /* LiveDocumentIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629AEB3DCB129578D4F70A28 /* LiveDocumentIntegrationTests.swift */; };
+		8DAD913EA22C5F02BD5E6A36 /* DestinationResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */; };
+		903961535C333D83F66D532B /* RoomCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35FCF9DC72655FB43A696334 /* RoomCamera.swift */; };
+		91311FD6FF50A282D03C57E5 /* RouteAlignmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723B98C7102BD7A2DAE95613 /* RouteAlignmentTests.swift */; };
+		91BABD3EA19EB8C50B03E571 /* RouteAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */; };
+		9DFDB3C51780B97B3D12A328 /* AppleMapsVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF462EE5B3F2255FD0FD1EA1 /* AppleMapsVerification.swift */; };
+		B600FC2C766CA83ADC565948 /* DocumentsAndPinsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90863F005C188EA5C21B7F30 /* DocumentsAndPinsTests.swift */; };
+		C5F2A70313E965EDD3A0B55B /* AIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CED0D3A0BE769B68737CF2 /* AIClient.swift */; };
+		CA01C630891B0CAC1E77C9F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29205BE105AC88EE65A9EC18 /* Assets.xcassets */; };
+		D10ED56122D8C70F8B9146CF /* WholeWordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F26CF84060382DC04811B1 /* WholeWordTests.swift */; };
+		DD06497CF79C267B71D62252 /* BrailioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C9348130AE1772EEC6BB89 /* BrailioApp.swift */; };
+		DD223770C4260B90E064FF79 /* Braille.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA088FBC2BF83BEF624E285 /* Braille.swift */; };
+		EC4E739B027D62D051D04CB8 /* BrailleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564C36591A5B56885C8DCE77 /* BrailleTests.swift */; };
+		ECAADEDAA8A054AC052F8BAF /* DemoAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */; };
+		F73581C5C471FA076041F260 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830DE96BE44368B887DF7F97 /* Components.swift */; };
+		FF99230234C06225B4032664 /* HapticReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 921D5D8EDB147C94D9BE50F8 /* HapticReader.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		624D3B77672CCA206C2520C0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5995BE2CFC965EA5076140A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B489DD301E84A0B128AC21B9;
+			remoteInfo = Brailio;
+		};
+		DA3B66511918BAA176DB025E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5995BE2CFC965EA5076140A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B489DD301E84A0B128AC21B9;
+			remoteInfo = Brailio;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0D1C6BC239D3A690A6258E0C /* NavigationHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationHaptics.swift; sourceTree = "<group>"; };
+		13773724505FA8ACF40B4956 /* BrailioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BrailioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1476107688FEA285BEE6DADF /* ObjectFinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectFinding.swift; sourceTree = "<group>"; };
+		29205BE105AC88EE65A9EC18 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationResolution.swift; sourceTree = "<group>"; };
+		2CA088FBC2BF83BEF624E285 /* Braille.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Braille.swift; sourceTree = "<group>"; };
+		3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedNote.swift; sourceTree = "<group>"; };
+		35FCF9DC72655FB43A696334 /* RoomCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCamera.swift; sourceTree = "<group>"; };
+		4518F16EF5BC5A47FD50C616 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		4BD2BE430C0369AA2D49D957 /* AIConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConnectionView.swift; sourceTree = "<group>"; };
+		564C36591A5B56885C8DCE77 /* BrailleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrailleTests.swift; sourceTree = "<group>"; };
+		5B84F0F4655233BA5706359C /* TactileSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TactileSurface.swift; sourceTree = "<group>"; };
+		60760D93ECC01378B3ECC2E4 /* TactileRouteMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TactileRouteMap.swift; sourceTree = "<group>"; };
+		629AEB3DCB129578D4F70A28 /* LiveDocumentIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDocumentIntegrationTests.swift; sourceTree = "<group>"; };
+		723B98C7102BD7A2DAE95613 /* RouteAlignmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteAlignmentTests.swift; sourceTree = "<group>"; };
+		7862CE99FC254544A5E93479 /* RouteGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteGuide.swift; sourceTree = "<group>"; };
+		830DE96BE44368B887DF7F97 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkLetterMatcher.swift; sourceTree = "<group>"; };
+		8D5DC7552510A7C36EB3BC3C /* Brailio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Brailio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EC649B57A3B56D387A9ED25 /* BrailioUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrailioUITests.swift; sourceTree = "<group>"; };
+		90863F005C188EA5C21B7F30 /* DocumentsAndPinsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsAndPinsTests.swift; sourceTree = "<group>"; };
+		921D5D8EDB147C94D9BE50F8 /* HapticReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticReader.swift; sourceTree = "<group>"; };
+		9401CE450A91315D33EEF3D6 /* InkWordMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkWordMatcher.swift; sourceTree = "<group>"; };
+		95CED0D3A0BE769B68737CF2 /* AIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIClient.swift; sourceTree = "<group>"; };
+		96DF4242C28D2A9EC7D82B37 /* Handwriting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Handwriting.swift; sourceTree = "<group>"; };
+		9FB4210FDAF0C1AA712A6708 /* GoogleRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleRouting.swift; sourceTree = "<group>"; };
+		AAC87574487C60D1E2007993 /* TrackerScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackerScanner.swift; sourceTree = "<group>"; };
+		AAF1BE4B500A72362614BE38 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentLibrary.swift; sourceTree = "<group>"; };
+		B1628ED233B392E8626383F6 /* TextImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextImport.swift; sourceTree = "<group>"; };
+		C8F26CF84060382DC04811B1 /* WholeWordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WholeWordTests.swift; sourceTree = "<group>"; };
+		CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBaseten.swift; sourceTree = "<group>"; };
+		CF462EE5B3F2255FD0FD1EA1 /* AppleMapsVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMapsVerification.swift; sourceTree = "<group>"; };
+		D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteAlignment.swift; sourceTree = "<group>"; };
+		D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAccess.swift; sourceTree = "<group>"; };
+		D7315A129B545B2B66BCCCF2 /* BrailioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BrailioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EA2E2945031B9E59B120690C /* BackendAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendAccess.swift; sourceTree = "<group>"; };
+		F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationSpeaker.swift; sourceTree = "<group>"; };
+		F0C9348130AE1772EEC6BB89 /* BrailioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrailioApp.swift; sourceTree = "<group>"; };
+		F56A00B7136989238B79A213 /* DemoVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoVerification.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		021C816C571270AEEB328A53 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				95CED0D3A0BE769B68737CF2 /* AIClient.swift */,
+				CF462EE5B3F2255FD0FD1EA1 /* AppleMapsVerification.swift */,
+				EA2E2945031B9E59B120690C /* BackendAccess.swift */,
+				2CA088FBC2BF83BEF624E285 /* Braille.swift */,
+				F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */,
+				4518F16EF5BC5A47FD50C616 /* Conversation.swift */,
+				D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */,
+				CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */,
+				F56A00B7136989238B79A213 /* DemoVerification.swift */,
+				29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */,
+				B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */,
+				9FB4210FDAF0C1AA712A6708 /* GoogleRouting.swift */,
+				96DF4242C28D2A9EC7D82B37 /* Handwriting.swift */,
+				921D5D8EDB147C94D9BE50F8 /* HapticReader.swift */,
+				890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */,
+				9401CE450A91315D33EEF3D6 /* InkWordMatcher.swift */,
+				0D1C6BC239D3A690A6258E0C /* NavigationHaptics.swift */,
+				1476107688FEA285BEE6DADF /* ObjectFinding.swift */,
+				35FCF9DC72655FB43A696334 /* RoomCamera.swift */,
+				D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */,
+				7862CE99FC254544A5E93479 /* RouteGuide.swift */,
+				3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */,
+				B1628ED233B392E8626383F6 /* TextImport.swift */,
+				AAC87574487C60D1E2007993 /* TrackerScanner.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		1A42EDF65A95D79D609679AD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D5DC7552510A7C36EB3BC3C /* Brailio.app */,
+				13773724505FA8ACF40B4956 /* BrailioTests.xctest */,
+				D7315A129B545B2B66BCCCF2 /* BrailioUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		57A42AD1A7404206B09EDED9 /* BrailioTests */ = {
+			isa = PBXGroup;
+			children = (
+				564C36591A5B56885C8DCE77 /* BrailleTests.swift */,
+				90863F005C188EA5C21B7F30 /* DocumentsAndPinsTests.swift */,
+				629AEB3DCB129578D4F70A28 /* LiveDocumentIntegrationTests.swift */,
+				723B98C7102BD7A2DAE95613 /* RouteAlignmentTests.swift */,
+				C8F26CF84060382DC04811B1 /* WholeWordTests.swift */,
+			);
+			path = BrailioTests;
+			sourceTree = "<group>";
+		};
+		82106B786C6E61E5C770D67B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				4BD2BE430C0369AA2D49D957 /* AIConnectionView.swift */,
+				830DE96BE44368B887DF7F97 /* Components.swift */,
+				AAF1BE4B500A72362614BE38 /* HomeView.swift */,
+				60760D93ECC01378B3ECC2E4 /* TactileRouteMap.swift */,
+				5B84F0F4655233BA5706359C /* TactileSurface.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		937CF4A2EDBFD92D8F4CF634 /* Brailio */ = {
+			isa = PBXGroup;
+			children = (
+				29205BE105AC88EE65A9EC18 /* Assets.xcassets */,
+				F0C9348130AE1772EEC6BB89 /* BrailioApp.swift */,
+				021C816C571270AEEB328A53 /* Core */,
+				82106B786C6E61E5C770D67B /* Views */,
+			);
+			path = Brailio;
+			sourceTree = "<group>";
+		};
+		B086B135889F9A02263AED0C /* BrailioUITests */ = {
+			isa = PBXGroup;
+			children = (
+				8EC649B57A3B56D387A9ED25 /* BrailioUITests.swift */,
+			);
+			path = BrailioUITests;
+			sourceTree = "<group>";
+		};
+		DC4B3C97EA3619398032F862 = {
+			isa = PBXGroup;
+			children = (
+				937CF4A2EDBFD92D8F4CF634 /* Brailio */,
+				57A42AD1A7404206B09EDED9 /* BrailioTests */,
+				B086B135889F9A02263AED0C /* BrailioUITests */,
+				1A42EDF65A95D79D609679AD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1C1114FC8D84BE92FE961706 /* BrailioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F94ED230174F7B07440C3766 /* Build configuration list for PBXNativeTarget "BrailioTests" */;
+			buildPhases = (
+				E3CC6B1042314122A70AD4FA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				617BBA119FA01F8138FCAECA /* PBXTargetDependency */,
+			);
+			name = BrailioTests;
+			packageProductDependencies = (
+			);
+			productName = BrailioTests;
+			productReference = 13773724505FA8ACF40B4956 /* BrailioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B489DD301E84A0B128AC21B9 /* Brailio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F1788E5245B1DFF49AD130E5 /* Build configuration list for PBXNativeTarget "Brailio" */;
+			buildPhases = (
+				8984BF37307FA681E72419B5 /* Sources */,
+				6ED810E2E2AA7676D15A19F9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Brailio;
+			packageProductDependencies = (
+			);
+			productName = Brailio;
+			productReference = 8D5DC7552510A7C36EB3BC3C /* Brailio.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B4C27699DD80B9191DB6BF38 /* BrailioUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CF8BEB86EA1B9A373A9ECC21 /* Build configuration list for PBXNativeTarget "BrailioUITests" */;
+			buildPhases = (
+				9F262BAD0C1AC8A954275C73 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D5C0DC884997B1BEDEAAC6A8 /* PBXTargetDependency */,
+			);
+			name = BrailioUITests;
+			packageProductDependencies = (
+			);
+			productName = BrailioUITests;
+			productReference = D7315A129B545B2B66BCCCF2 /* BrailioUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5995BE2CFC965EA5076140A1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					1C1114FC8D84BE92FE961706 = {
+						DevelopmentTeam = XRUD95996R;
+					};
+					B489DD301E84A0B128AC21B9 = {
+						DevelopmentTeam = XRUD95996R;
+						ProvisioningStyle = Automatic;
+					};
+					B4C27699DD80B9191DB6BF38 = {
+						DevelopmentTeam = XRUD95996R;
+						TestTargetID = B489DD301E84A0B128AC21B9;
+					};
+				};
+			};
+			buildConfigurationList = 4073B067376E2CC722031936 /* Build configuration list for PBXProject "Brailio" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DC4B3C97EA3619398032F862;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1A42EDF65A95D79D609679AD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B489DD301E84A0B128AC21B9 /* Brailio */,
+				1C1114FC8D84BE92FE961706 /* BrailioTests */,
+				B4C27699DD80B9191DB6BF38 /* BrailioUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6ED810E2E2AA7676D15A19F9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA01C630891B0CAC1E77C9F4 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8984BF37307FA681E72419B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5F2A70313E965EDD3A0B55B /* AIClient.swift in Sources */,
+				1D7BB178099747ECEC319506 /* AIConnectionView.swift in Sources */,
+				9DFDB3C51780B97B3D12A328 /* AppleMapsVerification.swift in Sources */,
+				5D6A7C912B85A8AD947B4AA9 /* BackendAccess.swift in Sources */,
+				DD06497CF79C267B71D62252 /* BrailioApp.swift in Sources */,
+				DD223770C4260B90E064FF79 /* Braille.swift in Sources */,
+				59A44796E6BBF04F0229F18A /* CommunicationSpeaker.swift in Sources */,
+				F73581C5C471FA076041F260 /* Components.swift in Sources */,
+				3148EEB40C4F89598A146868 /* Conversation.swift in Sources */,
+				ECAADEDAA8A054AC052F8BAF /* DemoAccess.swift in Sources */,
+				751097F7E4CFC61BA4C0C189 /* DemoBaseten.swift in Sources */,
+				195791F1DC83990C560114B6 /* DemoVerification.swift in Sources */,
+				8DAD913EA22C5F02BD5E6A36 /* DestinationResolution.swift in Sources */,
+				31F0BDB492965355B2A096D9 /* DocumentLibrary.swift in Sources */,
+				825CDDD9677CC0E94DD5BFCB /* GoogleRouting.swift in Sources */,
+				65BF125A26A6EA1F94EEE04E /* Handwriting.swift in Sources */,
+				FF99230234C06225B4032664 /* HapticReader.swift in Sources */,
+				70517167FAE3F43D66106BCB /* HomeView.swift in Sources */,
+				70A739A4592DF43E49027669 /* InkLetterMatcher.swift in Sources */,
+				038BA3D330620131EAFF87B5 /* InkWordMatcher.swift in Sources */,
+				0BE5FA3DACD5E2F1E2E1A931 /* NavigationHaptics.swift in Sources */,
+				4CE37AA54EEF0336D3D998DF /* ObjectFinding.swift in Sources */,
+				903961535C333D83F66D532B /* RoomCamera.swift in Sources */,
+				91BABD3EA19EB8C50B03E571 /* RouteAlignment.swift in Sources */,
+				23ABDAC4B4C2BE7FFD32226B /* RouteGuide.swift in Sources */,
+				51E693DF5C4E2E46ED117CA0 /* SavedNote.swift in Sources */,
+				21476A69141CE8E45C3E1A00 /* TactileRouteMap.swift in Sources */,
+				47ECE4AFE8F2C9CE42610261 /* TactileSurface.swift in Sources */,
+				5C570C7F7EA1C9EB4AFA4BD2 /* TextImport.swift in Sources */,
+				497E2C453897A5F92B858EEC /* TrackerScanner.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9F262BAD0C1AC8A954275C73 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10181DE3E4A765E81FAEF9DB /* BrailioUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E3CC6B1042314122A70AD4FA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EC4E739B027D62D051D04CB8 /* BrailleTests.swift in Sources */,
+				B600FC2C766CA83ADC565948 /* DocumentsAndPinsTests.swift in Sources */,
+				85B1251D736B8C59D8D1B877 /* LiveDocumentIntegrationTests.swift in Sources */,
+				91311FD6FF50A282D03C57E5 /* RouteAlignmentTests.swift in Sources */,
+				D10ED56122D8C70F8B9146CF /* WholeWordTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		617BBA119FA01F8138FCAECA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B489DD301E84A0B128AC21B9 /* Brailio */;
+			targetProxy = DA3B66511918BAA176DB025E /* PBXContainerItemProxy */;
+		};
+		D5C0DC884997B1BEDEAAC6A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B489DD301E84A0B128AC21B9 /* Brailio */;
+			targetProxy = 624D3B77672CCA206C2520C0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0DAB1AF716C9336DAA89A7D1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = XRUD95996R;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2D0DDE3C8C2761DF920F358E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Brailio;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Find nearby compatible Bluetooth tags by signal strength.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Map approximate object positions using camera and motion tracking. No room video is saved.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find nearby destinations and provide foreground walking route cues.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe a conversation partner with their permission.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert spoken replies into text for tactile reading.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		3E1313DE2C12BE0EF25B8B7D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.BrailioUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Brailio;
+			};
+			name = Debug;
+		};
+		41177C67BF1C832744015289 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.BrailioTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Brailio.app/Brailio";
+			};
+			name = Debug;
+		};
+		AAD811A06375CDC533A94832 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = XRUD95996R;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B15A8D5E4AC748A07BC05035 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Brailio;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Find nearby compatible Bluetooth tags by signal strength.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Map approximate object positions using camera and motion tracking. No room video is saved.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find nearby destinations and provide foreground walking route cues.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe a conversation partner with their permission.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert spoken replies into text for tactile reading.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		C9782821F06FB07DB3438517 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.BrailioUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Brailio;
+			};
+			name = Release;
+		};
+		EC0A2D52035F99D834149FEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.brailio.BrailioTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Brailio.app/Brailio";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4073B067376E2CC722031936 /* Build configuration list for PBXProject "Brailio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAD811A06375CDC533A94832 /* Debug */,
+				0DAB1AF716C9336DAA89A7D1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CF8BEB86EA1B9A373A9ECC21 /* Build configuration list for PBXNativeTarget "BrailioUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3E1313DE2C12BE0EF25B8B7D /* Debug */,
+				C9782821F06FB07DB3438517 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F1788E5245B1DFF49AD130E5 /* Build configuration list for PBXNativeTarget "Brailio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D0DDE3C8C2761DF920F358E /* Debug */,
+				B15A8D5E4AC748A07BC05035 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F94ED230174F7B07440C3766 /* Build configuration list for PBXNativeTarget "BrailioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				41177C67BF1C832744015289 /* Debug */,
+				EC0A2D52035F99D834149FEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5995BE2CFC965EA5076140A1 /* Project object */;
+}

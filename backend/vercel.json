@@ -1,0 +1,1 @@
+{"version":2,"rewrites":[{"source":"/assist","destination":"/api/assist"},{"source":"/route","destination":"/api/route"}],"functions":{"api/assist.js":{"maxDuration":45},"api/route.js":{"maxDuration":30}}}
