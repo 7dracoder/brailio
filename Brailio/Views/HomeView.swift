@@ -69,6 +69,7 @@ struct HomeView: View {
     @State private var destinationWriting = ""
     @State private var routeTask: Task<Void, Never>?
     @State private var navigationID = UUID()
+    @State private var readingLabel = false
     @State private var mapFocusLabel = ""
     @State private var startingRoute = false
     @State private var writingSearch = false
@@ -113,7 +114,7 @@ struct HomeView: View {
         .onAppear {
             appPhase=phase
             #if DEBUG
-            DemoVerification.runIfRequested(); AppleMapsVerification.runIfRequested()
+            DemoVerification.runIfRequested(); AppleMapsVerification.runIfRequested(); ProximityVerification.runIfRequested(using:navigationHaptics)
             #endif
             guide.onCue = { cue in if screen == .route && focused == nil { cuePattern(cue.rawValue, cue.dots) } }
             guide.onFeedback = { feedback in
@@ -133,14 +134,26 @@ struct HomeView: View {
                 if finishAfterRecognition { finishAfterRecognition = false; completeWriting() }
             }
             room.onCue = { dots in if screen == .find { cuePattern("Saved position", dots) } }
+            room.onFeedback = { value in
+                if screen == .find && appPhase == .active && !readingLabel { navigationHaptics.update(value) }
+                else if screen == .find { navigationHaptics.stop() }
+            }
+            labels.onFinished = { readingLabel=false; resumeLiveFeedback() }
+            labels.onSingleFinished = { readingLabel=false; resumeLiveFeedback() }
             room.onVerdict = { verdict in
                 guard screen == .find else { return }
-                feedback(verdict)
+                if ["saved","uncertain","unavailable"].contains(verdict) {
+                    notice=room.message
+                    if !readingLabel && (room.guiding || room.needsRescan) { room.resumeFeedback() }
+                } else {
+                    feedback(verdict)
+                }
                 if spokenFindResults && ["yes", "no", "uncertain"].contains(verdict) { speaker.speak(verdict) }
             }
-            room.onStopFeedback = { labels.stop() }
+            room.onStopFeedback = { labels.stop(); if screen == .find { navigationHaptics.stop() } }
+            reader.onSingleFinished = { readingLabel=false; resumeLiveFeedback() }
             reader.onFinished = {
-                guard continuousBook, screen == .read, let book = documents.current else { return }
+                guard continuousBook, screen == .read, let book = documents.current else { readingLabel=false; resumeLiveFeedback(); return }
                 guard documents.page + 1 < book.pages else { continuousBook = false; documents.bookmark(0); feedback("book finished"); return }
                 documents.setPage(documents.page + 1); loadDocumentPage(play: true)
             }
@@ -150,20 +163,26 @@ struct HomeView: View {
             guard captureRequested, screen == .find, phase == .active else { return }
             captureRequested = false
             guard !room.roomFrames.isEmpty else { fail("No room detail captured. Hold longer and try again."); return }
+            if room.needsRescan { startFinding(); return }
             objectWriting = ""; open(.write); writingObject = true
         }
         .onChange(of: navigationHaptics.error) { _, error in
-            if let error { guide.pauseForHapticFailure(error); if screen == .route { fail(error) }; navigationHaptics.error = nil }
+            if let error {
+                if screen == .find { room.stop(); fail(error) }
+                else { guide.pauseForHapticFailure(error); if screen == .route { fail(error) } }
+                navigationHaptics.error = nil
+            }
         }
         .onChange(of: room.error) { _, error in if let error, screen == .find { captureRequested = false; fail(error) } }
         .onChange(of: numbers) { _, value in ink.prefersDigits = value }
-        .onChange(of: reader.error) { _, error in if let error { notice = error; reader.error = nil } }
-        .onChange(of: labels.error) { _, error in if let error { notice = error; labels.error = nil } }
+        .onChange(of: reader.error) { _, error in if let error { notice = error; reader.error = nil; readingLabel=false; resumeLiveFeedback() } }
+        .onChange(of: labels.error) { _, error in if let error { notice = error; labels.error = nil; readingLabel=false; resumeLiveFeedback() } }
         .onChange(of: pages.count) { _, count in if page >= count { page = max(0, count - 1); focused = nil } }
         .onChange(of: phase) { _, phase in
             appPhase=phase
             if phase == .background { stopAll(); room.discardRoom() }
             else if phase == .inactive { reader.stop(); labels.stop(); guide.suspendFeedback(); navigationHaptics.stop() }
+            else { readingLabel=false; resumeLiveFeedback() }
         }
         .onChange(of: room.running) { _, running in if !running { scanID = UUID() } }
         .photosPicker(isPresented: $selectingPhoto, selection: $photo, matching: .images)
@@ -262,7 +281,7 @@ struct HomeView: View {
             }))
         }
         if screen == .find && page == 0 {
-            return AnyView(RoomHoldPanel(session: room.session, recording: room.recording, guiding: room.guiding, onHold: beginRoomCapture, onRelease: endRoomCapture, onCheck: { reader.stop(); labels.stop(); focused = nil; room.check() }))
+            return AnyView(RoomHoldPanel(session: room.session, recording: room.recording, guiding: room.guiding, onHold: beginRoomCapture, onRelease: endRoomCapture, onCheck: { reader.stop(); labels.stop(); focused = nil; readingLabel=false; room.check() }))
         }
         return nil
     }
@@ -296,25 +315,25 @@ struct HomeView: View {
             guard !Task.isCancelled, navigationID == id, appPhase == .active else { return }
             startingRoute=false; routeTask=nil
             if guide.route != nil {
-                open(.route); pending?.cancel(); labels.stop(); focused=nil; guide.start()
+                open(.route); pending?.cancel(); labels.stop(); readingLabel=false; focused=nil; guide.start()
             } else if guide.places.count > 1 { open(.places); feedback("choose destination") }
             else { fail(guide.error ?? guide.status) }
         }
     }
     private func beginRoomCapture() {
-        pending?.cancel(); labels.stop(); reader.stop(); room.stop()
+        pending?.cancel(); labels.stop(); reader.stop(); room.stop(); readingLabel=false
         captureRequested = true; focused = nil; room.recordRoom(); notice = "Mapping positions with temporary snapshots. No video is saved."
     }
     private func endRoomCapture() { room.finishRoom() }
     private func startFinding() {
-        pending?.cancel(); reader.stop(); labels.stop(); focused = nil; page = 0
+        pending?.cancel(); reader.stop(); labels.stop(); readingLabel=false; focused = nil; page = 0
         room.find(object)
     }
     private func action(_ id: String, _ title: String, _ symbol: String = "circle", value: String = "", enabled: Bool = true, selected: Bool = false, _ perform: @escaping () -> Void) -> TouchAction {
         TouchAction(id: id, title: title, symbol: symbol, value: value, enabled: enabled, selected: selected, perform: perform)
     }
     private func focus(_ id: String) {
-        continuousBook = false
+        continuousBook = false; readingLabel=true
         guard focused != id else { return }
         pending?.cancel(); reader.stop(); labels.stop(); room.suspendFeedback(); guide.suspendFeedback(); navigationHaptics.stop(); focused = id
         if !id.hasPrefix("nav") { lastControl = id }
@@ -326,7 +345,7 @@ struct HomeView: View {
     }
     private func activate() {
         guard let focused, let item = (allActions + footer).first(where: { $0.id == focused }) else { return }
-        pending?.cancel(); labels.stop()
+        pending?.cancel(); labels.stop(); readingLabel=false
         if item.enabled { item.perform() } else { feedback("unavailable") }
     }
     private func replay() {
@@ -335,15 +354,20 @@ struct HomeView: View {
         else if let lastControl, let item = allActions.first(where: { $0.id == lastControl }) { playLabel((item.title + " " + item.value).lowercased()) }
         else { playLabel(screen.rawValue.lowercased()) }
     }
-    private func playLabel(_ text: String) { labels.playText(ReadablePage.prepare(text).text) }
+    private func playLabel(_ text: String) { readingLabel=true; navigationHaptics.stop(); labels.playText(ReadablePage.prepare(text).text) }
+    private func resumeLiveFeedback() {
+        guard appPhase == .active, !readingLabel else { return }
+        if screen == .route && guide.guiding && guide.suspended { guide.start() }
+        if screen == .find && room.feedbackRequested && (room.guiding || room.needsRescan || room.searching) { room.resumeFeedback() }
+    }
     private func feedback(_ text: String) { continuousBook = false; pending?.cancel(); reader.stop(); notice = text; playLabel(text) }
     private func fail(_ text: String) { continuousBook = false; reader.stop(); notice = text; if screen == .find { room.message = text }; if [.documents, .library, .online].contains(screen) { documents.status = text }; playLabel("error") }
-    private func stopAll() { navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); room.stop(); pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
+    private func stopAll() { readingLabel=false; navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); room.stop(); pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
     private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(Braille.translate(reading).cells) } }
         if next == .find { room.start() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
     private func back() { if screen == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); clearDraftRequested = false; clearAllRequested = false; screen = history.popLast() ?? .home; page = 0; focused = nil; lastControl = nil; notice = screen.rawValue.lowercased(); if screen == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(Braille.translate(reading).cells) } }; if screen == .find { room.start() }; playLabel(screen.rawValue.lowercased()) }
     private func nextPage() { clearDraftRequested = false; clearAllRequested = false; pending?.cancel(); reader.stop(); page = (page + 1) % pages.count; focused = nil; lastControl = nil; feedback("page \(page + 1)") }
-    private func cuePattern(_ label: String, _ dots: Set<Int>) { reader.stop(); labels.load([BrailleCell(label: label, dots: dots)]); labels.play(single: true) }
+    private func cuePattern(_ label: String, _ dots: Set<Int>) { readingLabel=true; navigationHaptics.stop(); reader.stop(); labels.load([BrailleCell(label: label, dots: dots)]); labels.play(single: true) }
     private func entry(_ id: String, _ title: String, _ text: String) { pending?.cancel(); reader.stop(); entry = Entry(id: id, title: title, current: text) }
     private func chunks(_ values: [TouchAction]) -> [[TouchAction]] {
         guard !values.isEmpty else { return [[action("empty", "Empty", "tray", enabled: false) {}]] }
@@ -458,10 +482,10 @@ struct HomeView: View {
                 action("findReject", "Wrong object", "xmark") { room.reject() }
             ], [
                 action("findRecord", room.recording ? "Finish scan" : "Map room", "viewfinder") { if room.recording { endRoomCapture() } else { beginRoomCapture() } },
-                action("findResume", "Resume position", "mappin", enabled: !object.isEmpty) { focused = nil; room.find(object); page = 0 },
+                action("findResume", "Resume position", "mappin", enabled: !object.isEmpty) { focused = nil; readingLabel=false; if room.guiding { room.resumeFeedback() } else { room.find(object) }; page = 0 },
                 action("findMark", "Mark center", "mappin.and.ellipse", enabled: !object.isEmpty && !room.roomFrames.isEmpty && !room.searching) { focused = nil; room.markCenter(object); page = 0 },
                 action("findDiscard", "Clear scan", "trash") { captureRequested = false; room.discardRoom(); feedback("cleared") },
-                action("findGuide", "Cue guide", "hand.tap") { reader.playText("one left. two right. three ahead. four behind. five near saved position. Camera tracking required. Objects may move. No obstacle detection.") },
+                action("findGuide", "Cue guide", "hand.tap") { readingLabel=true; reader.playText("Single approach pulses grow stronger and faster near the saved position. Two short pulses mean tracking is uncertain. Camera tracking is required. Objects may move. No obstacle detection.") },
                 action("findTags", "Tags", "antenna.radiowaves.left.and.right") { open(.trackers) }
             ]] + chunks(room.pins.enumerated().map { index, pin in action("pin\(index)", "Position \(index + 1)", "mappin", value: pin.name) { object = pin.name; startFinding() } })
         case .go:
@@ -475,7 +499,7 @@ struct HomeView: View {
                      action("goGoogle", "Google route", "map", selected: guide.provider == .google) { guide.chooseProvider(.google); feedback("Google Maps selected. Server setup required for in app routes.") },
                      action("goGoogleOpen", "Google Maps", "arrow.up.forward.app", enabled: !destination.isEmpty) { guide.stop(); openURL(GoogleRouting.directionsURL(query: destination)) },
                      action("goType", "Type destination", "keyboard") { entry("destination", "Companion destination input", destination) },
-                     action("goProtocol", "Feedback guide", "waveform") { feedback("On route is silent. Deviation pulses grow stronger with error and weaken as you return. Two short pulses mean uncertain GPS or direction. Silence never means a safe crossing.") }
+                     action("goProtocol", "Feedback guide", "waveform") { feedback("Approach pulses grow stronger and faster near the destination. Long pulses mean a route error. Two short pulses mean uncertain GPS or direction. No safe crossing detection.") }
                  ], [
                      action("goPrivacy", "Privacy", "hand.raised") { openURL(URL(string: "https://brailio-api.vercel.app/privacy.html")!) },
                      action("goTerms", "Terms", "doc.text") { openURL(URL(string: "https://brailio-api.vercel.app/terms.html")!) }
@@ -483,20 +507,20 @@ struct HomeView: View {
         case .places:
             return chunks(guide.places.enumerated().map { index, place in action("place\(index)", "Place \(index + 1)", "mappin", value: place.name ?? "") {
                 notice = place.name ?? "place"; reader.playText(place.name ?? "place")
-                Task { await guide.preview(place); if guide.route != nil && screen == .places { open(.route); pending?.cancel(); labels.stop(); focused=nil; guide.start() } else { fail(guide.error ?? "route unavailable") } }
+                Task { await guide.preview(place); if guide.route != nil && screen == .places { open(.route); pending?.cancel(); labels.stop(); readingLabel=false; focused=nil; guide.start() } else { fail(guide.error ?? "route unavailable") } }
             } })
         case .route:
-            return [[], [action("routeRead", "Read step", "waveform", enabled: guide.current != nil) { if let text = guide.current?.instructions { reader.playText(ReadablePage.prepare(text).text) } },
-                     action("routeStart", guide.guiding ? "Resume" : "Start", "location.fill") { pending?.cancel(); reader.stop(); labels.stop(); focused = nil; guide.start() },
+            return [[], [action("routeRead", "Read step", "waveform", enabled: guide.current != nil) { if let text = guide.current?.instructions { readingLabel=true; reader.playText(ReadablePage.prepare(text).text) } },
+                     action("routeStart", guide.guiding ? "Resume" : "Start", "location.fill") { pending?.cancel(); reader.stop(); labels.stop(); readingLabel=false; focused = nil; guide.start() },
                      action("routeNext", "Confirm step", "checkmark") { focused = nil; guide.next() },
-                     action("routePreview", "Preview", "list.bullet") { reader.playText(ReadablePage.prepare(guide.steps.map(\.instructions).joined(separator: ". ")).text) },
+                     action("routePreview", "Preview", "list.bullet") { readingLabel=true; reader.playText(ReadablePage.prepare(guide.steps.map(\.instructions).joined(separator: ". ")).text) },
                      action("routeSave", "Save", "bookmark") { var saved = UserDefaults.standard.stringArray(forKey: "savedPlaces") ?? []; if !saved.contains(destination) { saved.append(destination) }; UserDefaults.standard.set(saved, forKey: "savedPlaces"); feedback("saved") },
-                     action("routeSafety", "Route limits", "info.circle") { notice = "GPS is approximate. This app cannot detect hazards or safe crossings. Use your usual mobility aid. Guidance stops in the background."; reader.playText("GPS is approximate. No obstacle or safe crossing detection. Use your mobility aid.") }],
+                     action("routeSafety", "Route limits", "info.circle") { notice = "GPS is approximate. This app cannot detect hazards or safe crossings. Use your usual mobility aid. Guidance stops in the background."; readingLabel=true; reader.playText("GPS is approximate. No obstacle or safe crossing detection. Use your mobility aid.") }],
                     [action("routeStop", "Stop", "stop.fill") { guide.stop(); navigationHaptics.stop(); feedback("stopped") },
                      action("routeGoogle", "Google Maps", "arrow.up.forward.app", enabled: guide.googleURL != nil) { if let url = guide.googleURL { guide.stop(); openURL(url) } },
                      action("routeReroute", "New route", "arrow.triangle.turn.up.right.diamond", enabled: !guide.busy) { Task { await guide.reroute(); if let error = guide.error { fail(error) } else { feedback("review new route before starting") } } },
-                     action("routeProtocol", "Feedback guide", "waveform") { feedback("Silence means aligned only while guidance is active with reliable GPS. Strong pulses mean deviation. Two short pulses mean uncertain. Use your mobility aid. Resume after exploring controls.") },
-                     action("routeProvider", "Provider", "map") { feedback(guide.route?.provider.title ?? guide.provider.title) },
+                     action("routeProtocol", "Feedback guide", "waveform") { feedback("Single approach pulses intensify near the destination. Long pulses mean deviation. Two short pulses mean uncertain. Use your mobility aid. Resume after exploring controls.") },
+                     action("routeProvider", "Approach pulses", "waveform", value:guide.proximityEnabled ? "On" : "Off", selected:guide.proximityEnabled) { guide.proximityEnabled.toggle(); feedback(guide.proximityEnabled ? "approach pulses on. Resume guidance" : "silent alignment mode. Resume guidance") },
                      action("routeStatus", "Route status", "info.circle") { feedback(guide.status) }],
                     [action("routeTestStrong", "Strong test", "waveform") { navigationHaptics.preview(RouteFeedback(kind: .deviated, strength: 1)) },
                      action("routeTestSoft", "Soft test", "waveform") { navigationHaptics.preview(RouteFeedback(kind: .deviated, strength: 0.25)) },

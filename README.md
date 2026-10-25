@@ -18,26 +18,26 @@ Recognition runs locally using iOS 27 PencilKit where available, then Vision OCR
 
 Apple Maps is the default and requires no Google Maps API key. **Go > Write destination > Done** waits for a usable location, resolves the destination, calculates an Apple walking route, opens the tactile map and starts guidance. Use draft, companion entry and saved destinations use the same path. Ambiguous results require choosing the intended place; an exact unique result or an explicit nearest/closest query can resolve automatically.
 
-On the map, hold/slide to feel the nearest route-instruction point. Double-tap opens that point's controls. Replay repeats its label. Panning/zoom gestures are disabled so the surface is used for tactile exploration. Exploring pauses route feedback; Resume is on the next action page.
+On the map, hold/slide to feel the nearest route-instruction point. Double-tap opens that point's controls. Replay repeats its label. Panning/zoom gestures are disabled so the surface is used for tactile exploration. Tactile labels briefly take over the actuator, then active guidance resumes automatically. Resume is also available on the next action page.
 
-- Reliable alignment with the route and direction of travel: silent.
+- Reliable alignment: short approach pulses that strengthen and speed up as the remaining route gets shorter. The optional silent-alignment mode is on the route controls page.
 - Sustained deviation, wrong turn or reverse travel: stronger correction pulses.
-- Returning toward alignment: progressively weaker pulses, then silence.
+- Returning toward alignment: the long correction pulses ease, then the distinct approach pulses resume.
 - Unreliable/stale GPS or travel direction: a distinct two-short-pulse uncertainty pattern.
 
 Two distinct reliable fixes are needed to establish deviation. Replaying a cached GPS fix cannot confirm it. Route matching stays near previous progress to reduce jumps to future parallel streets or loops. Strength respects the user's intensity setting. The route's training page provides bounded three-second Strong, Soft, Silent and Uncertain tests. Leaving the route screen or backgrounding stops guidance. New route explicitly recalculates.
 
-The final coordinate is a nearby checkpoint, not proof of a doorway or safe arrival. Silence cannot establish clear space, accessible sidewalks or a safe crossing. Continue using the usual mobility aid. Outdoor GPS accuracy and tactile interpretation still need supervised testing with intended users.
+Approach pulses continue at the final coordinate until Stop; that coordinate is a nearby checkpoint, not proof of a doorway or safe arrival. Silence cannot establish clear space, accessible sidewalks or a safe crossing. Continue using the usual mobility aid. Outdoor GPS accuracy and tactile interpretation still need supervised testing with intended users.
 
 Optional Google routing and keyless Google Maps handoff remain on secondary pages. In-app Google routes require a separately configured, billing-enabled Google Routes server key and app token; no Google key is included. Opening an external map app stops Brailio's foreground guidance.
 
 ## Room scanning and object positions
 
-Find's center control starts a scan when held and finishes on release, bounded to 30 seconds. **No room movie is recorded or saved.** Up to 30 reduced still snapshots and projected AR feature points are kept temporarily. Write an object name and choose Done; AI examines up to eight scan snapshots, and sufficient nearby feature points can establish an estimated room position. Sparse/ambiguous geometry is rejected.
+Find's center control starts a scan when held and finishes on release, bounded to 30 seconds. **No room movie is recorded or saved.** Up to 30 reduced still snapshots and projected AR feature points are kept temporarily. Write an object name and choose Done; AI examines up to eight scan snapshots, and sufficient nearby feature points can establish an estimated room position. Positioning first uses measured scene depth on supported hardware or tracked visual points. Smooth objects can also use a ray intersection with a classified table/seat surface, including surfaces detected later in the same scan. Floors, walls and unclassified surfaces are not used as automatic substitute object positions. Sparse/ambiguous geometry remains uncertain.
 
 Saved names return to stored AR positions without repeated object inference. ARKit still needs the camera and motion sensors for tracking/relocalization; this is not camera-free navigation. Basic iPhone 17 does not provide Pro-model rear LiDAR, and the implementation does not assume it. Positions can drift and cannot follow moved objects.
 
-Cues mean left (one), right (two), ahead (three), behind (four), or near the saved position (five). They yield to exploration and pause when tracking/localization is unavailable. A tap checks proximity to the saved position, **not object identity**. Wrong object stops guidance. Mark center can manually save a named surface position without AI. Saved maps use complete file protection; temporary snapshots are cleared after saving/backgrounding. Settings > Clear data removes maps and local documents.
+Single approach pulses grow stronger and faster near the estimated object position. Status reads left/right/ahead/behind. Two short pulses indicate missing position/tracking instead of falsely signaling approach. The haptic loop updates its strength without restarting on every camera/GPS update. Tactile labels/confirmations briefly take over the actuator and guidance resumes afterward. A tap checks proximity to the saved position, **not object identity**. Wrong object stops guidance. Mark center can manually save a named surface position without AI. A geometrically valid position can guide immediately while map saving retries; if persistence fails, it is explicitly marked current-session-only. When an object is detected but depth is unavailable, hold center and slowly rescan the object and supporting surface; the name is retained automatically. Saved maps use complete file protection; temporary snapshots are cleared after saving/backgrounding. Settings > Clear data removes maps and local documents.
 
 ## Reading, documents and conversations
 
@@ -75,3 +75,8 @@ Tests cover Braille, dot writing, whole-word ink recognition, retained ink acros
 On the connected iPhone, the private Keychain connection passed real Baseten text and synthetic-image object inference. Apple place search and walking-route calculation also passed using public synthetic endpoints, returning seven route steps without accessing the user's location. The destination-Done-to-active-map flow and hold/double-tap map access were checked separately in the UI runner. These checks do not establish physical room-map precision, recognition of personal belongings, road safety or outdoor tactile usability.
 
 See [UX research](docs/UX_RESEARCH.md) for primary technical references and research boundaries.
+
+
+### Proximity update verification
+
+The proximity update passed 51 iOS checks, including the complete destination/interactive-map UI flow and seven new proximity/surface tests. They cover monotonically stronger/faster approach pulses, non-silent endpoint feedback until Stop, rejected invalid distances, table-ray placement without tracked object points, rejection of unrelated floor/unclassified surfaces, and separate tactile-label completion. The focused reading/map regression checks and explicit Stop regression also passed. On the connected iPhone, the opt-in nine-second synthetic ramp completed all three stages with hardware haptics supported and no reported error. It does not validate real-room distance accuracy.

@@ -48,7 +48,7 @@ struct RoutePath {
         return best
     }
 }
-enum RouteFeedbackKind: String { case paused, aligned, deviated, uncertain, end }
+enum RouteFeedbackKind: String { case paused, aligned, approaching, deviated, uncertain, end }
 struct RouteFeedback: Equatable {
     let kind: RouteFeedbackKind
     let strength: Double

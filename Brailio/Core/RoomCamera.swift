@@ -15,16 +15,22 @@ struct SpatialFeature {
 struct SpatialSnapshot {
     let frame: RoomFrame
     let features: [SpatialFeature]
+    var depthFeatures: [SpatialFeature] = []
+    var geometry: SnapshotGeometry? = nil
     func position(in box: ObjectBox) -> SIMD3<Float>? {
         guard box.valid else { return nil }
         let center = CGPoint(x: box.x + box.width / 2, y: box.y + box.height / 2)
-        let candidates = features.filter { $0.image.x >= box.x && $0.image.x <= box.x + box.width && $0.image.y >= box.y && $0.image.y <= box.y + box.height }
-            .sorted { hypot($0.image.x-center.x, $0.image.y-center.y) < hypot($1.image.x-center.x, $1.image.y-center.y) }
-        guard let first = candidates.first, hypot(first.image.x-center.x, first.image.y-center.y) < 0.15 else { return nil }
-        // Sparse camera features estimate a surface position, not an exact object center.
-        let cluster = candidates.prefix(8).filter { simd_distance($0.point, first.point) < 0.25 }
-        guard cluster.count >= 3 else { return nil }
-        return cluster.reduce(SIMD3<Float>.zero) { $0 + $1.point } / Float(cluster.count)
+        func cluster(_ points:[SpatialFeature], centerLimit:Double) -> SIMD3<Float>? {
+            let candidates=points.filter { $0.image.x >= box.x && $0.image.x <= box.x+box.width && $0.image.y >= box.y && $0.image.y <= box.y+box.height }
+                .sorted { hypot($0.image.x-center.x,$0.image.y-center.y) < hypot($1.image.x-center.x,$1.image.y-center.y) }
+            guard let first=candidates.first, hypot(first.image.x-center.x,first.image.y-center.y) < centerLimit else { return nil }
+            let cluster=candidates.prefix(12).filter { simd_distance($0.point,first.point) < 0.25 }
+            guard cluster.count >= 3 else { return nil }
+            return cluster.reduce(SIMD3<Float>.zero) { $0+$1.point } / Float(cluster.count)
+        }
+        if let point=cluster(depthFeatures,centerLimit:0.12) { return point }
+        if let point=cluster(features,centerLimit:0.15) { return point }
+        return geometry?.position(box)
     }
 }
 struct RoomPin: Codable, Identifiable {
@@ -58,14 +64,22 @@ enum PinGuidance {
     @Published var pins: [RoomPin] = []
     @Published var guiding = false
     @Published var searching = false
+    @Published var needsRescan = false
+    @Published var feedback = RouteFeedback.paused
+    @Published var sessionOnly = false
+    var onFeedback: ((RouteFeedback)->Void)?
+    private(set) var feedbackRequested = false
     var onCue: ((Set<Int>) -> Void)?
     var onVerdict: ((String) -> Void)?
     var onStopFeedback: (() -> Void)?
     private var snapshots: [SpatialSnapshot] = []
+    private var latestSurfaces: [SpatialSurface] = []
     private var target: RoomPin?
     private var localized: Set<UUID> = []
     private var lastSample = Date.distantPast
     private var lastCue = Date.distantPast
+    private var lastFrameTime = 0.0
+    private var watchdog: Task<Void,Never>?
     private var started = Date.distantPast
     private var exploring = false
     private var loaded = false
@@ -99,28 +113,40 @@ enum PinGuidance {
             loaded = true
             if let data = try? Data(contentsOf: directory.appendingPathComponent("world.map")), let map = try? NSKeyedUnarchiver.unarchivedObject(ofClass: ARWorldMap.self, from: data) { config.initialWorldMap = map }
         }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
+        else if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) { config.frameSemantics.insert(.sceneDepth) }
         session.run(config); running = true; error = nil
+        watchdog?.cancel(); watchdog=Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for:.seconds(1)) } catch { return }
+                guard let self, self.running else { return }
+                if !self.exploring, (self.guiding || self.searching || self.needsRescan), CACurrentMediaTime()-self.lastFrameTime > 2 { self.emit(.uncertain) }
+            }
+        }
     }
 
     func recordRoom() {
-        cancelSearch(); guiding = false; target = nil; snapshots = []; roomFrames = []; lastSample = .distantPast; started = Date(); recording = true; message = "Mapping room. Release to write object name."; start()
+        feedbackRequested=true
+        cancelSearch(); guiding = false; target = nil; snapshots = []; latestSurfaces=[]; roomFrames = []; lastSample = .distantPast; started = Date(); recording = true; message = "Mapping room. Release to finish."; start(); emit(.uncertain)
     }
     func finishRoom() {
         guard recording else { return }
         recording = false; scanVersion += 1; message = "Room sampled. Write an object name."
     }
-    func stop() { generation = UUID(); cancelSearch(); recording = false; guiding = false; session.pause(); running = false; onStopFeedback?() }
-    func discardRoom() { stop(); snapshots = []; roomFrames = []; target = nil; message = "Room scan cleared. Saved positions remain." }
+    func stop() { feedbackRequested=false; watchdog?.cancel(); watchdog=nil; emit(.paused); generation = UUID(); cancelSearch(); recording = false; guiding = false; session.pause(); running = false; onStopFeedback?() }
+    func discardRoom() { stop(); snapshots = []; latestSurfaces=[]; roomFrames = []; target = nil; message = "Room scan cleared. Saved positions remain." }
     func deletePins() { discardRoom(); pins = []; localized = []; loaded = false; try? FileManager.default.removeItem(at: directory); if ARWorldTrackingConfiguration.isSupported { session.run(ARWorldTrackingConfiguration(), options: [.resetTracking, .removeExistingAnchors]); session.pause() } }
     private func cancelSearch() { generation = UUID(); search?.cancel(); search = nil; searching = false }
-    func suspendFeedback() { exploring = true; onStopFeedback?() }
-    func resumeFeedback() { exploring = false }
+    func suspendFeedback() { exploring = true; emit(.paused); onStopFeedback?() }
+    func resumeFeedback() { guard feedbackRequested else { return }; exploring = false; lastCue = .distantPast; if needsRescan || searching { emit(.uncertain) } }
+    private func emit(_ value:RouteFeedback) { guard value.kind == .paused || feedbackRequested else { return }; feedback=value; onFeedback?(value) }
     func find(_ name: String) {
-        cancelSearch(); target = nil; guiding = false; exploring = false; onStopFeedback?()
+        feedbackRequested=true
+        cancelSearch(); target = nil; guiding = false; exploring = false; needsRescan=false; onStopFeedback?(); emit(.uncertain)
         let query = name.trimmingCharacters(in: .whitespacesAndNewlines)
         start()
         guard !query.isEmpty else { message = "Write an object name first."; onVerdict?("empty"); return }
-        if snapshots.isEmpty, let pin = pins.first(where: { $0.name.caseInsensitiveCompare(query) == .orderedSame }) { target = pin; guiding = true; message = "Returning to saved position. Keep camera uncovered for tracking."; start(); return }
+        if snapshots.isEmpty, let pin = pins.first(where: { $0.name.caseInsensitiveCompare(query) == .orderedSame }) { target = pin; sessionOnly=false; guiding = true; message = "Returning to saved position. Keep camera uncovered for tracking."; start(); return }
         guard !snapshots.isEmpty else { message = "No saved position. Map the room or mark the object first."; onVerdict?("scan first"); return }
         guard DemoAccess.configured || !BackendAccess.token.isEmpty else { message = "Connect Baseten in Settings, AI connection. Mark center also works without AI."; onVerdict?("AI not connected"); return }
         let views = sampledSnapshots(); searching = true; message = "Finding object in scan snapshots"; let id = generation
@@ -129,9 +155,18 @@ enum PinGuidance {
                 let response = try await AIClient.request(task: "find_room", text: query, images: views.map { $0.frame.jpeg })
                 guard id == generation, !Task.isCancelled else { return }
                 searching = false
-                guard response.found == true, let index = response.evidenceFrame, views.indices.contains(index), let box = response.box, let point = views[index].position(in: box) else { message = "Cannot place a reliable room position. Scan closer or mark center."; onVerdict?("uncertain"); return }
+                guard response.found == true, (response.confidence ?? 0) >= 0.7, let index=response.evidenceFrame, views.indices.contains(index), let box=response.box else {
+                    needsRescan=true; message="Object not located confidently. Hold center to scan again. The name is kept."; emit(.uncertain); onVerdict?("uncertain"); return
+                }
+                var evidence=views[index]
+                if let geometry=evidence.geometry {
+                    evidence.geometry=SnapshotGeometry(camera:geometry.camera,intrinsics:geometry.intrinsics,resolution:geometry.resolution,surfaces:latestSurfaces+geometry.surfaces)
+                }
+                guard let point=evidence.position(in:box) else {
+                    needsRescan=true; message="Object detected. Room depth is not ready. Hold center and slowly scan the object and its table. The name is kept."; emit(.uncertain); onVerdict?("uncertain"); return
+                }
                 savePin(query, point: point)
-            } catch { guard id == generation else { return }; searching = false; message = error.localizedDescription; onVerdict?("unavailable") }
+            } catch { guard id == generation else { return }; searching = false; needsRescan=true; message = error.localizedDescription; emit(.uncertain); onVerdict?("unavailable") }
         }
     }
     private func sampledSnapshots() -> [SpatialSnapshot] {
@@ -143,43 +178,53 @@ enum PinGuidance {
         savePin(name, point: point)
     }
     private func savePin(_ name: String, point: SIMD3<Float>) {
+        feedbackRequested=true
         start()
         var matrix = matrix_identity_float4x4; matrix.columns.3 = SIMD4(point.x,point.y,point.z,1)
         let anchor = ARAnchor(name: name, transform: matrix); session.add(anchor: anchor)
         let pin = RoomPin(id: anchor.identifier, name: name, x: point.x, y: point.y, z: point.z)
-        let id = generation; searching = true; message = "Saving estimated room position"
-        session.getCurrentWorldMap { [weak self] map, error in
-            Task { @MainActor in
-                guard let self, id == self.generation else { return }
-                self.searching = false
-                guard let map, error == nil, map.anchors.contains(where: { $0.identifier == pin.id }) else { self.message = "Map could not be saved. Slowly scan more room detail."; self.onVerdict?("uncertain"); self.session.remove(anchor: anchor); return }
-                do {
-                    let values = self.pins.filter { $0.name.caseInsensitiveCompare(name) != .orderedSame } + [pin]
-                    let mapData = try NSKeyedArchiver.archivedData(withRootObject: map, requiringSecureCoding: true)
-                    try FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
-                    try mapData.write(to: self.directory.appendingPathComponent("world.map"), options: [.atomic, .completeFileProtection])
-                    try JSONEncoder().encode(values).write(to: self.directory.appendingPathComponent("pins.json"), options: [.atomic, .completeFileProtection])
-                    self.pins = values; self.localized.insert(pin.id); self.target = pin; self.guiding = true; self.exploring = false
-                    let slot = UserDefaults.standard.double(forKey: "slotDuration")
-                    self.lastCue = Date().addingTimeInterval(max(0, 5 * 8 * (slot > 0 ? slot : 0.3) - 3))
-                    self.snapshots = []; self.roomFrames = []; self.message = "Saved approximate position. Keep camera uncovered. Object may have moved."; self.onVerdict?("saved")
-                } catch { self.message = error.localizedDescription; self.onVerdict?("unavailable") }
+        let id=generation; searching=true; sessionOnly=true
+        target=pin; localized.insert(pin.id); guiding=true; exploring=false; needsRescan=false; lastCue = .distantPast
+        message="Position ready for this session. Saving the room map."
+        search=Task {
+            for _ in 0..<3 {
+                guard id == generation, !Task.isCancelled else { return }
+                let map:ARWorldMap? = await withCheckedContinuation { continuation in
+                    session.getCurrentWorldMap { map,_ in continuation.resume(returning:map) }
+                }
+                guard id == generation, !Task.isCancelled else { return }
+                if let map, map.anchors.contains(where:{ $0.identifier == pin.id }) {
+                    do {
+                        let values=pins.filter { $0.name.caseInsensitiveCompare(name) != .orderedSame }+[pin]
+                        let data=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
+                        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+                        try data.write(to:directory.appendingPathComponent("world.map"),options:[.atomic,.completeFileProtection])
+                        try JSONEncoder().encode(values).write(to:directory.appendingPathComponent("pins.json"),options:[.atomic,.completeFileProtection])
+                        pins=values; sessionOnly=false; searching=false; snapshots=[];roomFrames=[]
+                        message="Saved approximate position. Approach pulses intensify as you get closer.";onVerdict?("saved");return
+                    } catch { /* The valid current-session position remains usable. */ }
+                }
+                do { try await Task.sleep(for:.milliseconds(400)) } catch { return }
             }
+            guard id == generation else { return }
+            searching=false; message="Position available for this session. Room map could not be saved. Keep Find open."
         }
     }
+
     func check() {
-        exploring = true; onStopFeedback?()
+        exploring = true; emit(.paused); onStopFeedback?()
         guard let target, let frame = session.currentFrame, running, PinGuidance.available(age: CACurrentMediaTime() - frame.timestamp, normal: frame.camera.trackingState == .normal, localized: localized.contains(target.id)) else { message = "Room position is not localized."; onVerdict?("uncertain"); return }
         let distance = simd_distance(SIMD3(frame.camera.transform.columns.3.x, frame.camera.transform.columns.3.y, frame.camera.transform.columns.3.z), target.point)
         let near = distance < 0.8
         message = near ? "Yes, near the saved position. Object identity is not checked." : "No, not near the saved position."
         onVerdict?(near ? "yes" : "no")
     }
-    func reject() { guiding = false; target = nil; onStopFeedback?(); message = "Wrong object. Saved positions do not follow moving objects. Rescan or mark again."; onVerdict?("no") }
+    func reject() { feedbackRequested=false; guiding = false; target = nil; emit(.paused); onStopFeedback?(); message = "Wrong object. Saved positions do not follow moving objects. Rescan or mark again."; onVerdict?("no") }
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { for anchor in anchors where pins.contains(where: { $0.id == anchor.identifier }) { localized.insert(anchor.identifier) } }
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        lastFrameTime=frame.timestamp
         if recording, Date().timeIntervalSince(started) >= 30 { finishRoom() }
-        guard frame.camera.trackingState == .normal else { if guiding { message = "Tracking paused. Slowly face the scanned room."; onStopFeedback?() }; return }
+        guard frame.camera.trackingState == .normal else { if guiding { message = "Tracking uncertain. Slowly face the scanned room."; if !exploring { emit(.uncertain) } }; return }
         if recording, Date().timeIntervalSince(lastSample) >= 1 {
             lastSample = Date()
             let original = CIImage(cvPixelBuffer: frame.capturedImage).oriented(.right)
@@ -196,19 +241,22 @@ enum PinGuidance {
                     return SpatialFeature(point: point, image: normalized)
                 }
                 let sample = RoomFrame(jpeg: jpeg, captured: Date())
-                snapshots.append(SpatialSnapshot(frame: sample, features: features)); roomFrames.append(sample)
+                let geometry=SnapshotGeometry.capture(frame); latestSurfaces=geometry.surfaces
+                snapshots.append(SpatialSnapshot(frame:sample,features:features,depthFeatures:SnapshotGeometry.depthFeatures(frame),geometry:geometry)); roomFrames.append(sample)
                 if snapshots.count > 30 { snapshots.removeFirst(); roomFrames.removeFirst() }
             }
         }
-        guard guiding, !exploring, let target, Date().timeIntervalSince(lastCue) >= max(3, UserDefaults.standard.double(forKey: "slotDuration") * 8 + 0.3) else { return }
-        guard PinGuidance.available(age: CACurrentMediaTime() - frame.timestamp, normal: frame.camera.trackingState == .normal, localized: localized.contains(target.id)) else { message = "Relocalize in the saved room before guidance."; onStopFeedback?(); return }
+        guard guiding, !exploring, let target, Date().timeIntervalSince(lastCue) >= 0.2 else { return }
+        guard PinGuidance.available(age: CACurrentMediaTime() - frame.timestamp, normal: frame.camera.trackingState == .normal, localized: localized.contains(target.id)) else { message = "Relocalize in the saved room before guidance."; emit(.uncertain); return }
         lastCue = Date()
         guard let cue = PinGuidance.cue(camera: frame.camera.transform, target: target.point) else { return }
-        message = cue + ". Saved position only. No obstacle detection."
-        onCue?(cue == "left" ? [1] : cue == "right" ? [1,2] : cue == "ahead" ? [1,2,3] : cue == "behind" ? [1,2,3,4] : [1,2,3,4,5])
+        let camera=frame.camera.transform.columns.3
+        let distance=simd_distance(SIMD3(camera.x,camera.y,camera.z),target.point)
+        message = cue + ". Stronger and faster pulses mean nearer the position. No obstacle detection." + (sessionOnly ? " This position is available only in this session." : "")
+        emit(ProximityFeedback.object(distance:Double(distance)))
     }
-    func sessionWasInterrupted(_ session: ARSession) { onStopFeedback?(); message = "Tracking interrupted. Reopen Find and face the saved room." }
-    func session(_ session: ARSession, didFailWithError error: Error) { self.error = error.localizedDescription; guiding = false; onStopFeedback?() }
+    func sessionWasInterrupted(_ session: ARSession) { if feedbackRequested && !exploring { emit(.uncertain) }; message = "Tracking interrupted. Reopen Find and face the saved room." }
+    func session(_ session: ARSession, didFailWithError error: Error) { self.error = error.localizedDescription; if feedbackRequested && !exploring { emit(.uncertain) } }
     func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
 }
 struct RoomHoldPanel: UIViewRepresentable {

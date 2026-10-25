@@ -18,12 +18,15 @@
 		31F0BDB492965355B2A096D9 /* DocumentLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */; };
 		47ECE4AFE8F2C9CE42610261 /* TactileSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B84F0F4655233BA5706359C /* TactileSurface.swift */; };
 		497E2C453897A5F92B858EEC /* TrackerScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC87574487C60D1E2007993 /* TrackerScanner.swift */; };
+		49EE0ABC2DF37108F163D653 /* ProximityFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352AB1FEA69C0995F5D8E7AB /* ProximityFeedback.swift */; };
 		4CE37AA54EEF0336D3D998DF /* ObjectFinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1476107688FEA285BEE6DADF /* ObjectFinding.swift */; };
 		51E693DF5C4E2E46ED117CA0 /* SavedNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */; };
 		59A44796E6BBF04F0229F18A /* CommunicationSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */; };
 		5C570C7F7EA1C9EB4AFA4BD2 /* TextImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1628ED233B392E8626383F6 /* TextImport.swift */; };
 		5D6A7C912B85A8AD947B4AA9 /* BackendAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2E2945031B9E59B120690C /* BackendAccess.swift */; };
 		65BF125A26A6EA1F94EEE04E /* Handwriting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DF4242C28D2A9EC7D82B37 /* Handwriting.swift */; };
+		67DCE46B489851D18BEE7081 /* SnapshotGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078881450EC5F3D5851C6622 /* SnapshotGeometry.swift */; };
+		68325DA5C642F00FAD924A58 /* ProximityVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA96346D5FBFE2F5C18446A9 /* ProximityVerification.swift */; };
 		70517167FAE3F43D66106BCB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF1BE4B500A72362614BE38 /* HomeView.swift */; };
 		70A739A4592DF43E49027669 /* InkLetterMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */; };
 		751097F7E4CFC61BA4C0C189 /* DemoBaseten.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE279EA5C8F4144E5827DD4C /* DemoBaseten.swift */; };
@@ -33,7 +36,9 @@
 		903961535C333D83F66D532B /* RoomCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35FCF9DC72655FB43A696334 /* RoomCamera.swift */; };
 		91311FD6FF50A282D03C57E5 /* RouteAlignmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723B98C7102BD7A2DAE95613 /* RouteAlignmentTests.swift */; };
 		91BABD3EA19EB8C50B03E571 /* RouteAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */; };
+		9B74D646942C19141813C0CE /* HapticPulseSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2B87AF9795E93B1D5A01E6 /* HapticPulseSpec.swift */; };
 		9DFDB3C51780B97B3D12A328 /* AppleMapsVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF462EE5B3F2255FD0FD1EA1 /* AppleMapsVerification.swift */; };
+		A97966634250F172EADD2692 /* ProximityAndSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C60DE0EF252961CD1524883 /* ProximityAndSurfaceTests.swift */; };
 		B600FC2C766CA83ADC565948 /* DocumentsAndPinsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90863F005C188EA5C21B7F30 /* DocumentsAndPinsTests.swift */; };
 		C5F2A70313E965EDD3A0B55B /* AIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CED0D3A0BE769B68737CF2 /* AIClient.swift */; };
 		CA01C630891B0CAC1E77C9F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 29205BE105AC88EE65A9EC18 /* Assets.xcassets */; };
@@ -64,15 +69,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		078881450EC5F3D5851C6622 /* SnapshotGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotGeometry.swift; sourceTree = "<group>"; };
 		0D1C6BC239D3A690A6258E0C /* NavigationHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationHaptics.swift; sourceTree = "<group>"; };
 		13773724505FA8ACF40B4956 /* BrailioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BrailioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1476107688FEA285BEE6DADF /* ObjectFinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectFinding.swift; sourceTree = "<group>"; };
 		29205BE105AC88EE65A9EC18 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		29C19D4DDA947EAC277B3322 /* DestinationResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationResolution.swift; sourceTree = "<group>"; };
+		2C60DE0EF252961CD1524883 /* ProximityAndSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityAndSurfaceTests.swift; sourceTree = "<group>"; };
 		2CA088FBC2BF83BEF624E285 /* Braille.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Braille.swift; sourceTree = "<group>"; };
 		3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedNote.swift; sourceTree = "<group>"; };
+		352AB1FEA69C0995F5D8E7AB /* ProximityFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityFeedback.swift; sourceTree = "<group>"; };
 		35FCF9DC72655FB43A696334 /* RoomCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCamera.swift; sourceTree = "<group>"; };
 		4518F16EF5BC5A47FD50C616 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		4A2B87AF9795E93B1D5A01E6 /* HapticPulseSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticPulseSpec.swift; sourceTree = "<group>"; };
 		4BD2BE430C0369AA2D49D957 /* AIConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConnectionView.swift; sourceTree = "<group>"; };
 		564C36591A5B56885C8DCE77 /* BrailleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrailleTests.swift; sourceTree = "<group>"; };
 		5B84F0F4655233BA5706359C /* TactileSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TactileSurface.swift; sourceTree = "<group>"; };
@@ -101,6 +110,7 @@
 		D278BBD6B2B0BC82877762E5 /* DemoAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAccess.swift; sourceTree = "<group>"; };
 		D7315A129B545B2B66BCCCF2 /* BrailioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BrailioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA2E2945031B9E59B120690C /* BackendAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendAccess.swift; sourceTree = "<group>"; };
+		EA96346D5FBFE2F5C18446A9 /* ProximityVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityVerification.swift; sourceTree = "<group>"; };
 		F0A260E0C4147B05F1DC7710 /* CommunicationSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunicationSpeaker.swift; sourceTree = "<group>"; };
 		F0C9348130AE1772EEC6BB89 /* BrailioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrailioApp.swift; sourceTree = "<group>"; };
 		F56A00B7136989238B79A213 /* DemoVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoVerification.swift; sourceTree = "<group>"; };
@@ -123,15 +133,19 @@
 				B05AF57AEFCEB2BE5870715D /* DocumentLibrary.swift */,
 				9FB4210FDAF0C1AA712A6708 /* GoogleRouting.swift */,
 				96DF4242C28D2A9EC7D82B37 /* Handwriting.swift */,
+				4A2B87AF9795E93B1D5A01E6 /* HapticPulseSpec.swift */,
 				921D5D8EDB147C94D9BE50F8 /* HapticReader.swift */,
 				890CCD3289AE14225251E1FF /* InkLetterMatcher.swift */,
 				9401CE450A91315D33EEF3D6 /* InkWordMatcher.swift */,
 				0D1C6BC239D3A690A6258E0C /* NavigationHaptics.swift */,
 				1476107688FEA285BEE6DADF /* ObjectFinding.swift */,
+				352AB1FEA69C0995F5D8E7AB /* ProximityFeedback.swift */,
+				EA96346D5FBFE2F5C18446A9 /* ProximityVerification.swift */,
 				35FCF9DC72655FB43A696334 /* RoomCamera.swift */,
 				D04B7F46F3E5E15FEA245C0E /* RouteAlignment.swift */,
 				7862CE99FC254544A5E93479 /* RouteGuide.swift */,
 				3165250E23CDAA56FD6DD6F9 /* SavedNote.swift */,
+				078881450EC5F3D5851C6622 /* SnapshotGeometry.swift */,
 				B1628ED233B392E8626383F6 /* TextImport.swift */,
 				AAC87574487C60D1E2007993 /* TrackerScanner.swift */,
 			);
@@ -154,6 +168,7 @@
 				564C36591A5B56885C8DCE77 /* BrailleTests.swift */,
 				90863F005C188EA5C21B7F30 /* DocumentsAndPinsTests.swift */,
 				629AEB3DCB129578D4F70A28 /* LiveDocumentIntegrationTests.swift */,
+				2C60DE0EF252961CD1524883 /* ProximityAndSurfaceTests.swift */,
 				723B98C7102BD7A2DAE95613 /* RouteAlignmentTests.swift */,
 				C8F26CF84060382DC04811B1 /* WholeWordTests.swift */,
 			);
@@ -333,16 +348,20 @@
 				31F0BDB492965355B2A096D9 /* DocumentLibrary.swift in Sources */,
 				825CDDD9677CC0E94DD5BFCB /* GoogleRouting.swift in Sources */,
 				65BF125A26A6EA1F94EEE04E /* Handwriting.swift in Sources */,
+				9B74D646942C19141813C0CE /* HapticPulseSpec.swift in Sources */,
 				FF99230234C06225B4032664 /* HapticReader.swift in Sources */,
 				70517167FAE3F43D66106BCB /* HomeView.swift in Sources */,
 				70A739A4592DF43E49027669 /* InkLetterMatcher.swift in Sources */,
 				038BA3D330620131EAFF87B5 /* InkWordMatcher.swift in Sources */,
 				0BE5FA3DACD5E2F1E2E1A931 /* NavigationHaptics.swift in Sources */,
 				4CE37AA54EEF0336D3D998DF /* ObjectFinding.swift in Sources */,
+				49EE0ABC2DF37108F163D653 /* ProximityFeedback.swift in Sources */,
+				68325DA5C642F00FAD924A58 /* ProximityVerification.swift in Sources */,
 				903961535C333D83F66D532B /* RoomCamera.swift in Sources */,
 				91BABD3EA19EB8C50B03E571 /* RouteAlignment.swift in Sources */,
 				23ABDAC4B4C2BE7FFD32226B /* RouteGuide.swift in Sources */,
 				51E693DF5C4E2E46ED117CA0 /* SavedNote.swift in Sources */,
+				67DCE46B489851D18BEE7081 /* SnapshotGeometry.swift in Sources */,
 				21476A69141CE8E45C3E1A00 /* TactileRouteMap.swift in Sources */,
 				47ECE4AFE8F2C9CE42610261 /* TactileSurface.swift in Sources */,
 				5C570C7F7EA1C9EB4AFA4BD2 /* TextImport.swift in Sources */,
@@ -365,6 +384,7 @@
 				EC4E739B027D62D051D04CB8 /* BrailleTests.swift in Sources */,
 				B600FC2C766CA83ADC565948 /* DocumentsAndPinsTests.swift in Sources */,
 				85B1251D736B8C59D8D1B877 /* LiveDocumentIntegrationTests.swift in Sources */,
+				A97966634250F172EADD2692 /* ProximityAndSurfaceTests.swift in Sources */,
 				91311FD6FF50A282D03C57E5 /* RouteAlignmentTests.swift in Sources */,
 				D10ED56122D8C70F8B9146CF /* WholeWordTests.swift in Sources */,
 			);

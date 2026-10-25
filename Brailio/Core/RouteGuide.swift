@@ -27,6 +27,7 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
     @Published var status = "Enable location, then search for a destination."
     @Published var error: String?
     @Published var feedback = RouteFeedback.paused
+    @Published var proximityEnabled = true
     @Published var provider = RouteProvider.apple
     var onCue: ((TactileCue) -> Void)?
     var onFeedback: ((RouteFeedback) -> Void)?
@@ -77,12 +78,13 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
         guard latest.timestamp > lastAssessed else { return }; lastAssessed = latest.timestamp
         let assessment = RouteAlignment.evaluate(latest, path: path, progress: progress, now: now)
         progress = assessment.progress
-        let feedback = filter.update(assessment.feedback)
+        let feedback = filter.update(ProximityFeedback.route(assessment,length:path.total,enabled:proximityEnabled))
         switch feedback.kind {
         case .aligned: publish(feedback, message: "Aligned with the route. Silent feedback. No crossing or obstacle detection.")
+        case .approaching: publish(feedback, message: "Approach pulses grow stronger and faster as the remaining route shortens. No crossing or obstacle detection.")
         case .deviated: publish(feedback, message: "Route deviation. Stronger pulses mean greater error. Stop and check your surroundings before correcting.")
         case .uncertain: publish(feedback, message: "Position or travel direction uncertain. Two short pulses. Wait for reliable GPS and movement.")
-        case .end: guiding = false; watchdog?.cancel(); publish(feedback, message: "Final route point nearby. Guidance ended. Confirm the destination yourself."); onCue?(.nearby)
+        case .end: publish(feedback, message: "Final route point nearby. Approach pulses continue until Stop. Confirm the destination yourself.")
         case .paused: break
         }
     }

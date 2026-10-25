@@ -8,6 +8,7 @@ final class HapticReader: ObservableObject {
     @Published var activeDot: Int?
     @Published var isPlaying = false
     @Published var error: String?
+    var onSingleFinished: (() -> Void)?
     var onFinished: (() -> Void)?
     let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
     private var engine: CHHapticEngine?
@@ -88,7 +89,7 @@ final class HapticReader: ObservableObject {
                     self.index += 1
                 } while !Task.isCancelled
                 self.isPlaying = false; self.activeDot = nil
-                if !single && !Task.isCancelled { self.onFinished?() }
+                if !Task.isCancelled { if single { self.onSingleFinished?() } else { self.onFinished?() } }
             } catch is CancellationError { /* stop() owns cancellation state. */ }
             catch { self.stop(); self.error = "Vibration failed. \(error.localizedDescription)" }
         }
