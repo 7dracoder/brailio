@@ -55,3 +55,64 @@ enum Braille {
         return BrailleTranslation(cells: cells, unsupported: unsupported)
     }
 }
+
+/// Reading/label encoding. Raw navigation and Braille-keyboard cues retain their own patterns.
+enum TactileMode: String, CaseIterable {
+    case morse, braille
+    static var current: Self { Self(rawValue: UserDefaults.standard.string(forKey: "tactileMode") ?? "") ?? .morse }
+    var title: String { self == .morse ? "Morse" : "Braille" }
+}
+enum TactileEncoding {
+    static func translate(_ text: String, mode: TactileMode = .current) -> BrailleTranslation {
+        mode == .braille ? Braille.translate(text) : Morse.translate(text)
+    }
+}
+
+/// International Morse timing: mark 1/3 units, element gap 1, letter gap 3, word gap 7.
+/// ITU-R M.1677-1. Case is not encoded in Morse.
+enum Morse {
+    static let codes: [String: String] = Dictionary(uniqueKeysWithValues:
+        zip(Array("abcdefghijklmnopqrstuvwxyz0123456789").map(String.init),
+            [".-","-...","-.-.","-..",".","..-.","--.","....","..",".---","-.-",".-..","--","-.","---",".--.","--.-",".-.","...","-","..-","...-",".--","-..-","-.--","--..",
+             "-----",".----","..---","...--","....-",".....","-....","--...","---..","----."])
+    ).merging([".":".-.-.-",",":"--..--","?":"..--..","'":".----.","!":"-.-.--","/":"-..-.","(":"-.--.",")":"-.--.-","&":".-...",":":"---...",";":"-.-.-.","=":"-...-","+":".-.-.","-":"-....-","_":"..--.-","\"":".-..-.","$":"...-..-","@":".--.-."], uniquingKeysWith: { a, _ in a })
+    static func code(_ label: String) -> String { codes[label.lowercased()] ?? "" }
+    static func translate(_ text: String) -> BrailleTranslation {
+        var cells: [BrailleCell] = [], unsupported: [String] = []
+        for character in text {
+            let raw = String(character)
+            let normalized = raw.replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "—", with: "-").replacingOccurrences(of: "–", with: "-")
+            if character.isWhitespace {
+                if cells.last?.label != "Space" { cells.append(BrailleCell(label: "Space", dots: [])) }
+            } else if !code(normalized).isEmpty {
+                cells.append(BrailleCell(label: normalized, dots: []))
+            } else if !unsupported.contains(raw) { unsupported.append(raw) }
+        }
+        return BrailleTranslation(cells: cells, unsupported: unsupported)
+    }
+}
+struct TactilePulse: Equatable {
+    let start: Double
+    let duration: Double
+}
+struct TactileTiming {
+    let pulses: [TactilePulse]
+    let duration: Double
+    static func make(_ cell: BrailleCell, mode: TactileMode, unit: Double) -> Self {
+        let unit = unit.isFinite && unit > 0 ? unit : 0.3
+        if mode == .braille {
+            return Self(pulses: cell.dots.sorted().map { TactilePulse(start: Double($0 - 1) * unit, duration: unit * 0.48) }, duration: unit * 8)
+        }
+        // Each preceding letter already supplies 3 units: add 4 to make the 7-unit word gap.
+        if cell.label == "Space" { return Self(pulses: [], duration: unit * 4) }
+        let symbols = Array(Morse.code(cell.label))
+        var cursor = 0.0, pulses: [TactilePulse] = []
+        for (index, symbol) in symbols.enumerated() {
+            let length = symbol == "-" ? 3.0 : 1.0
+            pulses.append(TactilePulse(start: cursor * unit, duration: length * unit))
+            cursor += length
+            if index < symbols.count - 1 { cursor += 1 }
+        }
+        return Self(pulses: pulses, duration: (cursor + 3) * unit)
+    }
+}

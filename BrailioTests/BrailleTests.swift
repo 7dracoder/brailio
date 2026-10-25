@@ -110,3 +110,81 @@ final class HandwritingAndFindingTests: XCTestCase {
     }
 
 }
+
+
+final class MorseTests: XCTestCase {
+    func testStandardAlphabetDigitsAndSOS() {
+        XCTAssertEqual(Morse.codes.count, 54)
+        XCTAssertEqual(Morse.code("S"), "...")
+        XCTAssertEqual(Morse.code("o"), "---")
+        XCTAssertEqual(Morse.code("0"), "-----")
+        XCTAssertEqual(Morse.code("9"), "----.")
+        XCTAssertEqual(Morse.translate("SOS 19").cells.map { Morse.code($0.label) }, ["...", "---", "...", "", ".----", "----."])
+    }
+    func testDotDashAndElementSpacing() {
+        let cell = Morse.translate("a").cells[0]
+        let timing = TactileTiming.make(cell, mode: .morse, unit: 0.2)
+        XCTAssertEqual(timing.pulses.count, 2)
+        XCTAssertEqual(timing.pulses[0].start, 0)
+        XCTAssertEqual(timing.pulses[0].duration, 0.2, accuracy: 0.00001)
+        XCTAssertEqual(timing.pulses[1].start, 0.4, accuracy: 0.00001)
+        XCTAssertEqual(timing.pulses[1].duration, 0.6, accuracy: 0.00001)
+        XCTAssertEqual(timing.duration, 1.6, accuracy: 0.00001)
+    }
+    func testLetterAndWordGapsAreThreeAndSevenUnits() {
+        let cells = Morse.translate("e  t").cells
+        XCTAssertEqual(cells.count, 3)
+        let plans = cells.map { TactileTiming.make($0, mode: .morse, unit: 1) }
+        let endOfE = plans[0].pulses[0].duration
+        XCTAssertEqual(plans[0].duration - endOfE, 3)
+        XCTAssertEqual(plans[0].duration + plans[1].duration - endOfE, 7)
+        XCTAssertEqual(plans[2].pulses[0].duration, 3)
+    }
+    func testUnsupportedCharactersAndTypography() {
+        XCTAssertEqual(Morse.translate("Hi🙂é🙂").unsupported, ["🙂", "é"])
+        XCTAssertTrue(Morse.translate("don’t—stop!").unsupported.isEmpty)
+        XCTAssertTrue(Morse.translate("").cells.isEmpty)
+    }
+    func testBraillePatternsRemainUnchanged() {
+        let cell = Braille.translate("b").cells[0]
+        let timing = TactileTiming.make(cell, mode: .braille, unit: 0.3)
+        XCTAssertEqual(timing.pulses.map(\.start), [0, 0.3])
+        XCTAssertEqual(timing.duration, 2.4, accuracy: 0.00001)
+        XCTAssertEqual(TactileEncoding.translate("A", mode: .braille).cells.count, 2)
+        XCTAssertEqual(TactileEncoding.translate("A", mode: .morse).cells.count, 1)
+    }
+    func testDefaultAndPersistedSelection() {
+        let defaults = UserDefaults.standard, old = defaults.object(forKey: "tactileMode")
+        defer { if let old { defaults.set(old, forKey: "tactileMode") } else { defaults.removeObject(forKey: "tactileMode") } }
+        defaults.removeObject(forKey: "tactileMode")
+        XCTAssertEqual(TactileMode.current, .morse)
+        defaults.set("braille", forKey: "tactileMode")
+        XCTAssertEqual(TactileMode.current, .braille)
+        defaults.set("unknown", forKey: "tactileMode")
+        XCTAssertEqual(TactileMode.current, .morse)
+    }
+    @MainActor func testSOSPlaybackCompletesAndStopCancels() async throws {
+        let defaults = UserDefaults.standard, old = defaults.object(forKey: "slotDuration")
+        defer { if let old { defaults.set(old, forKey: "slotDuration") } else { defaults.removeObject(forKey: "slotDuration") } }
+        defaults.set(0.04, forKey: "slotDuration")
+        let reader = HapticReader(); var completions = 0
+        reader.onFinished = { completions += 1 }
+        reader.load(Morse.translate("sos").cells, mode: .morse); reader.play()
+        for _ in 0..<60 { if !reader.isPlaying { break }; try await Task.sleep(for: .milliseconds(50)) }
+        XCTAssertFalse(reader.isPlaying); XCTAssertNil(reader.error); XCTAssertEqual(completions, 1)
+        reader.load(Morse.translate("tttttt").cells, mode: .morse); reader.play(); reader.stop()
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(reader.isPlaying); XCTAssertEqual(completions, 1)
+    }
+    @MainActor func testPhysicalIPhoneMorseHaptics() async throws {
+        let reader = HapticReader()
+        guard reader.supportsHaptics else { throw XCTSkip("Physical iPhone haptic engine required") }
+        let defaults = UserDefaults.standard, old = defaults.object(forKey: "slotDuration")
+        defer { if let old { defaults.set(old, forKey: "slotDuration") } else { defaults.removeObject(forKey: "slotDuration") } }
+        defaults.set(0.18, forKey: "slotDuration")
+        reader.load(Morse.translate("sos").cells, mode: .morse); reader.play()
+        for _ in 0..<160 { if !reader.isPlaying { break }; try await Task.sleep(for: .milliseconds(50)) }
+        XCTAssertNil(reader.error); XCTAssertFalse(reader.isPlaying); XCTAssertEqual(reader.index, 2)
+        XCTAssertTrue(reader.supportsHaptics)
+    }
+}

@@ -25,6 +25,25 @@ final class DocumentsAndPinsTests: XCTestCase {
         XCTAssertEqual(restored.matching("LONG").count, 1)
         restored.deleteAll(); XCTAssertTrue(restored.documents.isEmpty)
     }
+    @MainActor func testBookmarkOffsetsDoNotCrossTactileModes() async throws {
+        let defaults = UserDefaults.standard, old = defaults.object(forKey: "tactileMode")
+        defer { if let old { defaults.set(old, forKey: "tactileMode") } else { defaults.removeObject(forKey: "tactileMode") } }
+        let root = try directory(); defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("book.txt")
+        try String(repeating: "hello ", count: 1000).write(to: file, atomically: true, encoding: .utf8)
+        defaults.set("braille", forKey: "tactileMode")
+        let library = DocumentLibrary(directory: root.appendingPathComponent("library")); try await library.importFile(file)
+        let id = try XCTUnwrap(library.active)
+        library.setPage(1); library.bookmark(8)
+        defaults.set("morse", forKey: "tactileMode")
+        library.select(id)
+        XCTAssertEqual(library.page, 1); XCTAssertEqual(library.cell, 0)
+        library.bookmark(3)
+        let restored = DocumentLibrary(directory: root.appendingPathComponent("library")); restored.select(id)
+        XCTAssertEqual(restored.page, 1); XCTAssertEqual(restored.cell, 3)
+        defaults.set("braille", forKey: "tactileMode"); restored.select(id)
+        XCTAssertEqual(restored.cell, 0)
+    }
     @MainActor func testPDFExtractsEachPageWithoutConcatenatingWholeBook() async throws {
         let root = try directory(); defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("Book.pdf")

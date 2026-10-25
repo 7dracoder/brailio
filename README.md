@@ -2,7 +2,7 @@
 
 **Read, write, talk, find things and explore routes—through touch.**
 
-Brailio is a native iPhone app designed for DeafBlind and nonspeaking people. It brings everyday tools into one tactile interface: feel a control's label, write with a finger, read text through Braille vibration patterns, find an object and follow walking-route cues.
+Brailio is a native iPhone app designed for DeafBlind and nonspeaking people. It brings everyday tools into one tactile interface: feel a control's label, write with a finger, read text through Morse or Braille vibration patterns, find an object and follow walking-route cues.
 
 [Watch the demo](https://youtu.be/rZSWxz13-gI) · [Devpost](https://devpost.com/software/brailio) · [Design research](docs/UX_RESEARCH.md)
 
@@ -22,11 +22,25 @@ Demo screenshots show the interface; the tactile experience requires a physical 
 
 App menus use six fixed action zones, so their positions stay predictable. Handwriting, room scanning and map exploration have dedicated touch surfaces. Apple's Files picker and permission dialogs retain system controls. Text, large icons, dark mode, Dynamic Type and VoiceOver also support companions and people with residual vision.
 
-### How vibration becomes Braille
+### Choose Morse or Braille
+
+**Morse is the default.** Open **Settings → Morse / Braille** to switch at any time. The choice is saved on the iPhone and applies to text reading, menu labels, handwriting read-back, messages and document playback. Navigation, proximity and Braille-keyboard dot cues keep their own distinct patterns.
+
+Morse uses **short dots and long dashes**. A dot lasts one beat; a dash lasts three. Gaps last one beat inside a character, three between letters and seven between words, following [International Morse code timing](https://www.itu.int/rec/R-REC-M.1677). For example, **a** is `.-`, **b** is `-...`, and **SOS** is `... --- ...`.
+
+In **Learn**, try individual letters, Dot, Dash and the SOS example. **Settings → Test SOS** plays the selected code. Slower/Faster changes the timing; Stronger/Softer is on the next Settings page. Morse does not distinguish capital and lowercase letters. Both modes require learning; neither is assumed to be easier for every user.
+
+Switching codes preserves a document's page but restarts its character position, since Morse and Braille use different character sequences.
+
+| Choose your code | Practice Morse |
+| :---: | :---: |
+| <img src="screenshots/Morse-Settings.png" width="240" alt="Settings showing Morse selected, Braille alternative, speed controls and Test SOS"> | <img src="screenshots/Morse-Learn.png" width="240" alt="Morse practice with Dot, Dash, SOS example and Timing controls"> |
+
+### Braille mode
 
 A normal Braille character has six possible raised dots. Brailio plays those positions **one after another** as six timed slots: a pulse for a raised dot and a quiet slot for an empty dot, followed by a gap between characters. For example, **a** pulses in slot 1; **b** pulses in slots 1 and 2.
 
-This is a learned tactile code played through the phone's haptic engine. It does not create physical dots under the finger. Learn introduces the patterns, and Replay repeats a label or reading.
+This is a learned tactile code played through the phone's haptic engine. It does not create physical dots under the finger. Learn introduces the selected code, and Replay repeats a label or reading.
 
 ## What you can do
 
@@ -39,7 +53,7 @@ This is a learned tactile code played through the phone's haptic engine. It does
 | **Find** | Hold the center control to scan, release, then write an object's name. AI identifies it in a current camera snapshot or scan snapshots; ARKit estimates its position, and approach taps get stronger and faster nearby. |
 | **Go** | Write a destination and choose Done. Brailio resolves the place, calculates an Apple Maps walking route and starts its tactile map and guidance. Ambiguous destinations require a choice. |
 | **Saved** | Find notes, places, object names with last-seen information, and imported documents together on the iPhone. |
-| **Learn** | Practice Braille and the tactile interaction patterns before using the other tools. |
+| **Learn** | Practice Morse or Braille and the tactile interaction patterns before using the other tools. |
 
 ### Finding an object
 
@@ -70,7 +84,7 @@ You need a Mac with Xcode, an iPhone running **iOS 17 or later**, and an Apple s
 4. For AI features, open **Settings → AI connection**, enter your own Gemini API key and choose **Save and test**. The key stays in that phone's Keychain.
 5. Try **Write**, then **Read**, **Talk**, **Find** or **Go**. Allow camera, location, microphone or speech access when the relevant feature needs it.
 
-Handwriting, document OCR, Braille playback and local storage do not require an AI key. AI requests and online document/place searches need an internet connection. The configured Gemini model must be available to your API account; its identifier is in [DemoGemini.swift](Brailio/Core/DemoGemini.swift).
+Handwriting, document OCR, Morse/Braille playback and local storage do not require an AI key. AI requests and online document/place searches need an internet connection. The configured Gemini model must be available to your API account; its identifier is in [DemoGemini.swift](Brailio/Core/DemoGemini.swift).
 
 An alternative private-device provisioning helper is [scripts/provision-private-demo.sh](scripts/provision-private-demo.sh). It reads the key with terminal echo disabled; close and reopen the app after provisioning to clear the transient launch environment.
 
@@ -79,7 +93,7 @@ An alternative private-device provisioning helper is [scripts/provision-private-
 | Technology | Role |
 | --- | --- |
 | **SwiftUI / UIKit** | Native iPhone screens and direct-touch interaction |
-| **Core Haptics** | Timed Braille cells and guidance pulses |
+| **Core Haptics** | Timed Morse/Braille characters and guidance pulses |
 | **PencilKit / Vision** | On-device ink capture, handwriting recognition and OCR |
 | **ARKit** | Camera tracking, plane estimation, raycasting and supported-device LiDAR depth |
 | **MapKit / Core Location** | Apple place search, walking routes and location feedback |
@@ -110,7 +124,9 @@ xcodebuild -project Brailio.xcodeproj -scheme Brailio \
 node --test backend/tests/assist.test.js backend/tests/route.test.js
 ```
 
-Tests cover Braille translation, writing, documents, route feedback, spatial placement, provider responses and fixed UI flows. Simulator and synthetic tests cannot establish real-room positioning accuracy or outdoor safety. This documentation update does not certify a new end-to-end hardware test.
+Tests cover Morse mappings, dot/dash timing, letter/word gaps, mode persistence, playback completion/cancellation, Braille translation, writing, documents, route feedback, spatial placement, provider responses and fixed UI flows. Simulator and synthetic tests cannot establish real-room positioning accuracy or outdoor safety. The physical-device Morse test requires a connected iPhone; the Simulator cannot verify how vibration feels.
+
+Morse update verification: 27 distinct Simulator checks passed across the focused unit, document and UI runs. The physical-iPhone haptics test was skipped because only a Simulator was connected; hardware feel and comprehension are not verified by those results.
 
 Project configuration is in [project.yml](project.yml); use `xcodegen generate` after changing that configuration. Research sources and design boundaries are in [docs/UX_RESEARCH.md](docs/UX_RESEARCH.md).
 

@@ -8,6 +8,7 @@ final class HapticReader: ObservableObject {
     @Published var activeDot: Int?
     @Published var isPlaying = false
     @Published var error: String?
+    private(set) var mode: TactileMode = .current
     var onSingleFinished: (() -> Void)?
     var onFinished: (() -> Void)?
     let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
@@ -18,14 +19,14 @@ final class HapticReader: ObservableObject {
     var slotDuration: Double { UserDefaults.standard.double(forKey: "slotDuration").nonzeroOr(0.30) }
 
     func playText(_ text: String) {
-        let result = Braille.translate(text)
+        let result = TactileEncoding.translate(text)
         guard result.unsupported.isEmpty else {
             stop(); error = "Please replace unsupported characters: " + result.unsupported.joined(separator: " "); return
         }
         load(result.cells); play()
     }
-    func load(_ cells: [BrailleCell]) {
-        stop(); self.cells = cells; index = 0; error = nil
+    func load(_ cells: [BrailleCell], mode: TactileMode = .current) {
+        stop(); self.mode = mode; self.cells = cells; index = 0; error = nil
     }
     func move(_ offset: Int) {
         stop(); index = max(0, min(cells.count - 1, index + offset))
@@ -66,25 +67,31 @@ final class HapticReader: ObservableObject {
                 repeat {
                     guard let cell = self.current else { break }
                     let slot = self.slotDuration
-                    if self.supportsHaptics, !cell.dots.isEmpty {
+                    let timing = TactileTiming.make(cell, mode: self.mode, unit: slot)
+                    if self.supportsHaptics, !timing.pulses.isEmpty {
                         let intensity = Float(UserDefaults.standard.double(forKey: "intensity").nonzeroOr(0.8))
-                        let events = cell.dots.sorted().map { dot in
+                        let events = timing.pulses.map { pulse in
                             CHHapticEvent(eventType: .hapticContinuous, parameters: [
                                 CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
                                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.6)
-                            ], relativeTime: Double(dot - 1) * slot, duration: slot * 0.48)
+                            ], relativeTime: pulse.start, duration: pulse.duration)
                         }
                         let pattern = try CHHapticPattern(events: events, parameters: [])
                         self.player = try self.engine?.makePlayer(with: pattern)
                         try self.player?.start(atTime: CHHapticTimeImmediate)
                     }
-                    for dot in 1...6 {
+                    if self.mode == .braille {
+                        for dot in 1...6 {
+                            try Task.checkCancellation()
+                            self.activeDot = dot
+                            try await Task.sleep(for: .seconds(slot))
+                        }
+                        self.activeDot = nil
+                        try await Task.sleep(for: .seconds(slot * 2))
+                    } else {
                         try Task.checkCancellation()
-                        self.activeDot = dot
-                        try await Task.sleep(for: .seconds(slot))
+                        try await Task.sleep(for: .seconds(timing.duration))
                     }
-                    self.activeDot = nil
-                    try await Task.sleep(for: .seconds(slot * 2))
                     if single || self.index == self.cells.count - 1 { break }
                     self.index += 1
                 } while !Task.isCancelled

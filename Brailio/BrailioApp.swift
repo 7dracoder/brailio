@@ -5,7 +5,7 @@ struct BrailioApp: App {
     init() {
         #if DEBUG
         if ProcessInfo.processInfo.environment["BRAILIO_UI_TEST_RESET"] == "1" {
-            for key in ["touchExplore", "messageDraft", "readerText", "notes", "findQuery", "destinationQuery", "routeProvider"] { UserDefaults.standard.removeObject(forKey: key) }
+            for key in ["tactileMode", "touchExplore", "messageDraft", "readerText", "notes", "findQuery", "destinationQuery", "routeProvider"] { UserDefaults.standard.removeObject(forKey: key) }
         }
         #endif
         BackendAccess.bootstrap(); DemoAccess.bootstrap()

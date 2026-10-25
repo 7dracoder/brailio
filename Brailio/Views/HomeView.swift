@@ -27,6 +27,7 @@ struct HomeView: View {
     @AppStorage("findQuery") private var object = "keys"
     @AppStorage("destinationQuery") private var destination = ""
     @AppStorage("notes") private var notesData = Data()
+    @AppStorage("tactileMode") private var tactileMode = TactileMode.morse.rawValue
     @AppStorage("slotDuration") private var pace = 0.30
     @AppStorage("intensity") private var intensity = 0.8
     @AppStorage("practicedLetters") private var practiced = ""
@@ -105,6 +106,7 @@ struct HomeView: View {
         if screen == .read, let book = documents.current { return "\(book.title). page \(documents.page + 1) of \(book.pages). \(notice)" }
         if screen == .go || screen == .route { return guide.guiding && guide.suspended ? "Guidance paused for exploration. Resume to continue." : guide.location == nil && !guide.guiding ? "Location required." : guide.status }
         if screen == .talk { return page == 0 ? draft : conversation.transcript }
+        if screen == .settings { return "Tactile code " + TactileMode.current.title }
         return notice
     }
     var body: some View {
@@ -192,7 +194,7 @@ struct HomeView: View {
             Task {
                 do {
                     guard let data = try await item.loadTransferable(type: Data.self) else { throw ImportFailure.unreadable }
-                    documents.close(); reading = ReadablePage.prepare(try await TextImport.recognize(data)).text; reader.load(Braille.translate(reading).cells); feedback("text ready")
+                    documents.close(); reading = ReadablePage.prepare(try await TextImport.recognize(data)).text; reader.load(TactileEncoding.translate(reading).cells); feedback("text ready")
                 } catch { fail(error.localizedDescription) }
                 busy = false; photo = nil
             }
@@ -212,7 +214,7 @@ struct HomeView: View {
             CompanionEntry(title: item.title, value: item.current) { value in
                 switch item.id {
                 case "draft": draft = value
-                case "read": documents.close(); reading = value; reader.load(Braille.translate(value).cells)
+                case "read": documents.close(); reading = value; reader.load(TactileEncoding.translate(value).cells)
                 case "documentQuery": documentQuery = value
                 case "documentURL": downloadLink(value)
                 case "reply": conversation.transcript = value
@@ -245,7 +247,7 @@ struct HomeView: View {
                 Text(route.provider.title).font(.system(size: 14, weight: .regular)).foregroundStyle(.primary).lineLimit(1).accessibilityIdentifier("routeAttribution")
             }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("routeSummary")
         } else if screen == .read, let cell = reader.current {
-            HStack { Text(cell.label).font(.system(.title2, design: .rounded, weight: .bold)).lineLimit(2); Spacer(); BrailleDots(dots: cell.dots, active: reader.activeDot); Text((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count)").font(.caption).accessibilityIdentifier("readerPosition") }.padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+            HStack { Text(cell.label).font(.system(.title2, design: .rounded, weight: .bold)).lineLimit(2); Spacer(); if reader.mode == .braille { BrailleDots(dots: cell.dots, active: reader.activeDot) } else { Text(cell.label == "Space" ? "/" : Morse.code(cell.label)).font(.title2.monospaced()).accessibilityLabel("Morse " + Morse.code(cell.label)) }; Text((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count)").font(.caption).accessibilityIdentifier("readerPosition") }.padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
         } else {
             VStack(spacing: 6) {
                 Text(previewText).font(.system(.headline, design: .rounded)).lineLimit(2).minimumScaleFactor(0.7).accessibilityIdentifier("surfaceStatus")
@@ -265,7 +267,8 @@ struct HomeView: View {
         case .objects: return room.pins.isEmpty ? "No saved objects yet. Find an object to save it." : "Double tap an object to find it again"
         case .go: return (destination.isEmpty ? "Choose destination" : destination) + ". " + guide.provider.title
         case .route: return guide.guiding ? (guide.suspended ? "Explore paused. Resume to continue." : guide.status) : guide.current?.instructions ?? guide.status
-        case .learn: return Braille.alphabet[selectedLetter].0.uppercased()
+        case .learn: return TactileMode.current.title + " " + Braille.alphabet[selectedLetter].0.uppercased() + (TactileMode.current == .morse ? " " + Morse.code(Braille.alphabet[selectedLetter].0) : "")
+        case .settings: return "Tactile code: " + TactileMode.current.title
         default: return notice
         }
     }
@@ -367,7 +370,7 @@ struct HomeView: View {
     private func feedback(_ text: String) { continuousBook = false; pending?.cancel(); reader.stop(); notice = text; playLabel(text) }
     private func fail(_ text: String) { continuousBook = false; reader.stop(); notice = text; if screen == .find { room.message = text }; if [.documents, .library, .online].contains(screen) { documents.status = text }; playLabel("error") }
     private func stopAll(keepRoom: Bool = false) { readingLabel=false; navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); if keepRoom { room.suspendFeedback() } else { room.stop() }; pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
-    private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(Braille.translate(reading).cells) } }
+    private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }
         if next == .find { room.start() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
     /// Faith keeps camera tracking alive while the request is entered, so the scan and AR world survive.
     private func openObjectWriting() {
@@ -375,9 +378,9 @@ struct HomeView: View {
         screen = .write; page = 0; focused = nil; lastControl = nil; notice = "write"
         writingSearch = false; writingDestination = false; objectWriting = ""; writingObject = true; playLabel("draw")
     }
-    private func back(keepRoom: Bool = false) { let keep = keepRoom || (screen == .write && writingObject); if screen == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(keepRoom: keep); clearDraftRequested = false; clearAllRequested = false; screen = history.popLast() ?? .home; page = 0; focused = nil; lastControl = nil; notice = screen.rawValue.lowercased(); if screen == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(Braille.translate(reading).cells) } }; if screen == .find { room.start() }; playLabel(screen.rawValue.lowercased()) }
+    private func back(keepRoom: Bool = false) { let keep = keepRoom || (screen == .write && writingObject); if screen == .write { writingObject = false; writingSearch = false; writingDestination = false }; stopAll(keepRoom: keep); clearDraftRequested = false; clearAllRequested = false; screen = history.popLast() ?? .home; page = 0; focused = nil; lastControl = nil; notice = screen.rawValue.lowercased(); if screen == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }; if screen == .find { room.start() }; playLabel(screen.rawValue.lowercased()) }
     private func nextPage() { clearDraftRequested = false; clearAllRequested = false; pending?.cancel(); reader.stop(); page = (page + 1) % pages.count; focused = nil; lastControl = nil; feedback("page \(page + 1)") }
-    private func cuePattern(_ label: String, _ dots: Set<Int>) { readingLabel=true; navigationHaptics.stop(); reader.stop(); labels.load([BrailleCell(label: label, dots: dots)]); labels.play(single: true) }
+    private func cuePattern(_ label: String, _ dots: Set<Int>) { readingLabel=true; navigationHaptics.stop(); reader.stop(); labels.load([BrailleCell(label: label, dots: dots)], mode: .braille); labels.play(single: true) }
     private func entry(_ id: String, _ title: String, _ text: String) { pending?.cancel(); reader.stop(); entry = Entry(id: id, title: title, current: text) }
     private func chunks(_ values: [TouchAction]) -> [[TouchAction]] {
         guard !values.isEmpty else { return [[action("empty", "Empty", "tray", enabled: false) {}]] }
@@ -425,18 +428,18 @@ struct HomeView: View {
                  action("writeKeys", "Keys", "circle.grid.2x2") { page = 1; focused = nil; feedback("keys") }]
             ]
         case .read:
-            let valid = Braille.translate(reading).unsupported.isEmpty && !reading.isEmpty
+            let valid = TactileEncoding.translate(reading).unsupported.isEmpty && !reading.isEmpty
             return [[
                 action("readPlay", reader.isPlaying ? "Pause" : "Play", reader.isPlaying ? "pause.fill" : "play.fill", enabled: valid && !loadingPage) { playReading() },
                 action("readRepeat", "Repeat", "arrow.counterclockwise", enabled: valid) { reader.play(single: true) },
                 action("readPrevious", "Previous", "backward.end.fill", enabled: reader.index > 0) { reader.move(-1); reader.play(single: true) },
                 action("readNext", "Forward", "forward.end.fill", enabled: reader.index < reader.cells.count - 1) { reader.move(1); reader.play(single: true) },
-                action("readDraft", "Use draft", "doc.on.doc", enabled: !draft.isEmpty) { documents.close(); reading = draft; reader.load(Braille.translate(draft).cells); feedback("loaded") },
+                action("readDraft", "Use draft", "doc.on.doc", enabled: !draft.isEmpty) { documents.close(); reading = draft; reader.load(TactileEncoding.translate(draft).cells); feedback("loaded") },
                 action("readDocuments", "Documents", "books.vertical") { open(.documents) }
             ], [action("readPhoto", "Photo", "photo") { selectingPhoto = true },
                 action("readFile", "File", "doc") { importing = true },
                 action("readType", "Type", "keyboard") { entry("read", "Companion text input", reading) },
-                action("readSample", "Example", "text.quote") { documents.close(); reading = "hello"; reader.load(Braille.translate(reading).cells); feedback("hello") },
+                action("readSample", "Example", "text.quote") { documents.close(); reading = "hello"; reader.load(TactileEncoding.translate(reading).cells); feedback("hello") },
                 action("readSlower", "Slower", "tortoise") { pace = min(0.6, pace + 0.04); feedback("slower") },
                 action("readFaster", "Faster", "hare") { pace = max(0.18, pace - 0.04); feedback("faster") }], [
                 action("bookPrevious", "Previous page", "arrow.left", enabled: documents.active != nil && documents.page > 0 && !loadingPage) { changeDocumentPage(-1) },
@@ -444,7 +447,7 @@ struct HomeView: View {
                 action("bookReadAll", "Read book", "play.fill", enabled: documents.active != nil && !loadingPage && !reader.cells.isEmpty) { continuousBook = true; labels.stop(); reader.play() },
                 action("bookPosition", "Position", "bookmark") { feedback(statusText) },
                 action("bookLibrary", "Library", "books.vertical") { open(.library) },
-                action("bookClose", "Close book", "xmark", enabled: documents.active != nil) { continuousBook = false; documents.close(); reading = "hello"; reader.load(Braille.translate(reading).cells); feedback("closed") }
+                action("bookClose", "Close book", "xmark", enabled: documents.active != nil) { continuousBook = false; documents.close(); reading = "hello"; reader.load(TactileEncoding.translate(reading).cells); feedback("closed") }
             ], [action("readSave", "Save text", "square.and.arrow.down", enabled: !reading.isEmpty) { saveNote(reading) },
                 action("readSaved", "Saved", "tray.full") { open(.storage) }]]
         case .documents:
@@ -546,20 +549,28 @@ struct HomeView: View {
             return chunks((UserDefaults.standard.stringArray(forKey: "savedPlaces") ?? []).enumerated().map { index, place in action("saved\(index)", "Place \(index + 1)", "bookmark", value: place) { destination = place; open(.go); startNavigation(place) } })
         case .learn:
             let letter = Braille.alphabet[selectedLetter]
-            return [[action("learnPlay", "Play", "waveform") { reader.load([BrailleCell(label: letter.0, dots: letter.1)]); reader.play(single: true); if !practiced.contains(letter.0) { practiced += letter.0 } },
+            return [[action("learnPlay", "Play", "waveform") { reader.load(TactileEncoding.translate(letter.0).cells); reader.play(single: true); if !practiced.contains(letter.0) { practiced += letter.0 } },
                      action("learnPrevious", "Previous", "arrow.left", enabled: selectedLetter > 0) { selectedLetter -= 1; feedback(Braille.alphabet[selectedLetter].0) },
                      action("learnNext", "Forward", "arrow.right", enabled: selectedLetter < 25) { selectedLetter += 1; feedback(Braille.alphabet[selectedLetter].0) },
                      action("learnName", "Letter", "textformat") { feedback(letter.0) },
-                     action("learnDots", "Dots", "circle.grid.2x2") { reader.playText(letter.1.sorted().map(String.init).joined(separator: " ")) },
+                     action("learnDots", TactileMode.current == .morse ? "Pattern" : "Dots", "circle.grid.2x2") { if TactileMode.current == .morse { reader.playText(letter.0) } else { reader.playText(letter.1.sorted().map(String.init).joined(separator: " ")) } },
                      action("learnWrite", "Write", "pencil") { open(.write) }],
-                    [1,4,2,5,3,6].map { dot in action("learnDot\(dot)", "\(dot)", "circle") { cuePattern("Dot \(dot)", [dot]) } }]
+                    TactileMode.current == .morse ? [
+                        action("learnMorseDot", "Dot", "circle.fill") { reader.playText("e") },
+                        action("learnMorseDash", "Dash", "minus") { reader.playText("t") },
+                        action("learnMorseSOS", "SOS example", "waveform") { reader.playText("sos") },
+                        action("learnCodeGuide", "Timing", "info.circle") { feedback("Dot one beat. Dash three beats. One beat inside a letter. Three between letters. Seven between words.") }
+                    ] : [1,4,2,5,3,6].map { dot in action("learnDot\(dot)", "\(dot)", "circle") { cuePattern("Dot \(dot)", [dot]) } }]
         case .settings:
-            return [[action("settingsSlower", "Slower", "tortoise") { pace = min(0.6, pace + 0.04); feedback("slower") },
+            return [[action("settingsMorse", "Morse", "waveform", selected: tactileMode == "morse") { selectTactileMode(.morse) },
+                     action("settingsBraille", "Braille", "circle.grid.2x2", selected: tactileMode == "braille") { selectTactileMode(.braille) },
+                     action("settingsSlower", "Slower", "tortoise") { pace = min(0.6, pace + 0.04); feedback("slower") },
                      action("settingsFaster", "Faster", "hare") { pace = max(0.18, pace - 0.04); feedback("faster") },
+                     action("settingsTest", "Test SOS", "waveform") { reader.playText("sos") },
+                     action("settingsAI", "AI connection", "link", value: DemoAccess.configured ? "Private demo" : "Setup") { showingConnection = true }], [
                      action("settingsStronger", "Stronger", "plus") { intensity = min(1, intensity + 0.1); feedback("stronger") },
                      action("settingsSofter", "Softer", "minus") { intensity = max(0.2, intensity - 0.1); feedback("softer") },
-                     action("settingsTest", "Test", "waveform") { cuePattern("B", [1,2]) },
-                     action("settingsAI", "AI connection", "link", value: DemoAccess.configured ? "Private demo" : "Setup") { showingConnection = true }],
+                     action("settingsCodeGuide", "Code guide", "info.circle") { feedback(TactileMode.current == .morse ? "Morse uses short dots and long dashes. Learn has examples." : "Braille uses six timed dot slots. Learn has examples.") }],
                     [action("settingsClear", "Clear data", "trash") { clearAllRequested = true; feedback("confirm clear") },
                      action("settingsConfirmClear", "Confirm clear", "trash", enabled: clearAllRequested) {
                          reader.load([]); draft = ""; reading = ""; notesData = Data(); practiced = ""; trackerNames = Data(); room.deletePins(); documents.deleteAll(); UserDefaults.standard.removeObject(forKey: "savedPlaces"); clearAllRequested = false; feedback("cleared")
@@ -583,6 +594,13 @@ struct HomeView: View {
             return [controls] + chunks(scanner.trackers.enumerated().map { index, tracker in action("tag\(tracker.id)", "Tag \(index + 1)", "sensor.tag.radiowaves.forward", value: names[tracker.id.uuidString] ?? tracker.name) { selectedTracker = tracker.id; scanner.selected = tracker.id; focused = nil; reader.playText(names[tracker.id.uuidString] ?? tracker.name) } })
         }
     }
+    private func selectTactileMode(_ mode: TactileMode) {
+        stopAll(); tactileMode = mode.rawValue; practiced = ""
+        // Cell offsets differ between codes; retain the document page and restart its characters.
+        if documents.active != nil { documents.bookmark(0) }
+        reader.load(TactileEncoding.translate(reading, mode: mode).cells, mode: mode)
+        feedback(mode.title + " selected")
+    }
     private func commitCharacter() {
         guard let character else { return }
         draft += character; dots = []; deleted = nil; page = 1; focused = nil
@@ -590,7 +608,7 @@ struct HomeView: View {
     }
     private func playReading() {
         continuousBook = false
-        let translation = Braille.translate(reading)
+        let translation = TactileEncoding.translate(reading)
         guard translation.unsupported.isEmpty else { fail("Unsupported characters. Use English letters, digits and basic punctuation."); return }
         if reader.isPlaying { reader.stop() }
         else {
@@ -605,7 +623,7 @@ struct HomeView: View {
             do {
                 let text = try await documents.pageText()
                 guard request == pageRequest, documents.active == id, documents.page == page else { return }
-                reading = text.text; reader.load(Braille.translate(text.text).cells); reader.move(cell); loadingPage = false
+                reading = text.text; reader.load(TactileEncoding.translate(text.text).cells); reader.move(cell); loadingPage = false
                 notice = "Page \(page + 1)." + (text.replacements > 0 ? " Unsupported symbols are announced." : "")
                 if screen != .read { open(.read) }
                 else if play { labels.stop(); reader.play() }

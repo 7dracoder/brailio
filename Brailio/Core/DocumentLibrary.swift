@@ -10,6 +10,7 @@ struct LibraryDocument: Codable, Identifiable {
     let source: String
     var page: Int = 0
     var cell: Int = 0
+    var offsetMode: String? = nil
 }
 struct OnlineDocument: Identifiable, Decodable {
     let identifier: String
@@ -70,10 +71,10 @@ struct ReadablePage {
     }
     func bookmark(_ cell: Int) {
         guard let index = documents.firstIndex(where: { $0.id == active }) else { return }
-        self.cell = max(0, cell); documents[index].page = page; documents[index].cell = self.cell; save()
+        self.cell = max(0, cell); documents[index].page = page; documents[index].cell = self.cell; documents[index].offsetMode = TactileMode.current.rawValue; save()
     }
     func close() { active = nil; page = 0; cell = 0 }
-    func select(_ id: UUID) { guard let item = documents.first(where: { $0.id == id }) else { return }; active = id; page = item.page; cell = item.cell }
+    func select(_ id: UUID) { guard let item = documents.first(where: { $0.id == id }) else { return }; active = id; page = item.page; cell = (item.offsetMode ?? "braille") == TactileMode.current.rawValue ? item.cell : 0 }
     func setPage(_ value: Int) { guard let item = current else { return }; page = max(0, min(item.pages - 1, value)); cell = 0; bookmark(0) }
     func importFile(_ url: URL, title: String? = nil, source: String = "Files") async throws {
         let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }

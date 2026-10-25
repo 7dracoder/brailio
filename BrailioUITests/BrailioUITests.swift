@@ -45,6 +45,24 @@ final class BrailioUITests: XCTestCase {
         XCTAssertTrue(app.buttons["note0"].exists)
         capture(app, "Tactile-Notes")
     }
+    @MainActor func testMorseDefaultSwitchToBrailleAndPersist() {
+        let app = launch(); choose("navNext", in: app); choose("homeSettings", in: app)
+        XCTAssertTrue(app.staticTexts["surfaceStatus"].label.contains("Morse"))
+        capture(app, "Morse-Settings")
+        choose("settingsTest", in: app)
+        choose("settingsBraille", in: app)
+        XCTAssertTrue(app.staticTexts["surfaceStatus"].label.contains("Braille"))
+        app.terminate(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"] = "0"; app.launch()
+        choose("navNext", in: app); choose("homeSettings", in: app)
+        XCTAssertTrue(app.staticTexts["surfaceStatus"].label.contains("Braille"))
+        choose("settingsMorse", in: app)
+        XCTAssertTrue(app.staticTexts["surfaceStatus"].label.contains("Morse"))
+        choose("navBack", in: app); choose("homeLearn", in: app); choose("navNext", in: app)
+        XCTAssertTrue(app.buttons["learnMorseDot"].exists)
+        XCTAssertTrue(app.buttons["learnMorseDash"].exists)
+        XCTAssertEqual(app.scrollViews.count, 0)
+        capture(app, "Morse-Learn")
+    }
     @MainActor func testEveryPrimaryFeatureHasFixedNavigation() {
         let app = launch()
         for id in ["homeRead", "homeTalk", "homeFind", "homeGo", "homeLearn"] {
