@@ -83,3 +83,51 @@ final class ProximityAndSurfaceTests:XCTestCase {
     }
 
 }
+
+
+final class CleanFindTests: XCTestCase {
+    @MainActor func testFindPanelContainsNoCameraImageView() {
+        let panel = RoomHoldPanel.HoldView(frame: .init(x: 0, y: 0, width: 300, height: 500))
+        XCTAssertFalse(panel.subviews.contains { $0 is UIImageView })
+    }
+    @MainActor func testNewScanClearsPriorSearchState() {
+        let room = RoomCamera()
+        room.message = "Previously looking for laptop"
+        room.needsRescan = true
+        room.prepareForScan()
+        XCTAssertFalse(room.needsRescan); XCTAssertFalse(room.guiding); XCTAssertFalse(room.searching)
+        XCTAssertTrue(room.roomFrames.isEmpty)
+        XCTAssertFalse(room.message.contains("laptop"))
+    }
+}
+
+extension CleanFindTests {
+    @MainActor func testPhysicalHiddenRoomScanCapturesSnapshots() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_ROOM_SCAN"] == "1", ARWorldTrackingConfiguration.isSupported else { throw XCTSkip("Opt-in physical camera check") }
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else { throw XCTSkip("No foreground window") }
+        let previous = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene), controller = UIViewController(), room = RoomCamera()
+        window.rootViewController = controller
+        room.trackingView.frame = CGRect(x: 0, y: 0, width: 2, height: 2)
+        room.trackingView.alpha = 0.01
+        controller.view.addSubview(room.trackingView); window.makeKeyAndVisible()
+        defer { room.stop(); window.isHidden = true; previous?.makeKeyAndVisible() }
+        room.recordRoom()
+        for _ in 0..<150 where room.roomFrames.isEmpty { try await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertTrue(room.running, room.error ?? "Camera did not start")
+        guard !room.roomFrames.isEmpty else { throw XCTSkip("Camera started, but needs a textured room view and slow movement to establish tracking") }
+        room.finishRoom()
+        XCTAssertFalse(room.recording); XCTAssertGreaterThan(room.roomFrames[0].jpeg.count, 100)
+        XCTAssertEqual(room.message, "Scan ready. Write the object name.")
+    }
+    @MainActor func testLiveFindInferenceWithSavedCredential() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_ROOM_SCAN"] == "1" else { throw XCTSkip("Opt-in live AI check") }
+        guard !DemoAccess.key(for: .baseten).isEmpty else { throw XCTSkip("Private iPhone credential is not provisioned") }
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 480, height: 480)).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 480, height: 480))
+            UIColor.red.setFill(); context.cgContext.fillEllipse(in: CGRect(x: 120, y: 120, width: 240, height: 240))
+        }
+        let result = try await AIClient.request(task: "find_room", text: "red circle", images: [try XCTUnwrap(image.jpegData(compressionQuality: 0.7))])
+        XCTAssertEqual(result.found, true); XCTAssertEqual(result.evidenceFrame, 0); XCTAssertTrue(result.box?.valid == true)
+    }
+}

@@ -66,14 +66,13 @@ enum PinGuidance {
     @Published var roomFrames:[RoomFrame]=[]
     @Published var scanVersion=0
     @Published var error:String?
-    @Published var message="Write an object name, or hold center to scan."
+    @Published var message="Hold the center to scan. Release, then write an object name."
     @Published var pins:[RoomPin]=[]
     @Published var guiding=false
     @Published var searching=false
     @Published var needsRescan=false
     @Published var feedback=RouteFeedback.paused
     @Published var sessionOnly=true
-    @Published var previewImage:UIImage?
     @Published private(set) var placementMethod:FindingPlacementMethod?
     private(set) var feedbackRequested=false
     private(set) var worldID=UUID()
@@ -154,14 +153,25 @@ enum PinGuidance {
     }
     private func invalidateWorld() {
         worldID=UUID();generation=UUID();operation?.cancel();operation=nil
-        target=nil;guiding=false;searching=false;snapshots=[];roomFrames=[];previewImage=nil;placementMethod=nil
+        target=nil;guiding=false;searching=false;snapshots=[];roomFrames=[];placementMethod=nil
+    }
+    func prepareForScan() {
+        stop(); query=""; needsRescan=false; exploring=false
+        message="Hold the center to scan. Release, then write an object name."
     }
     func recordRoom() {
+        query=""; needsRescan=false
         cancelOperation();feedbackRequested=true;guiding=false;target=nil;snapshots=[];roomFrames=[]
         recording=true;scanStarted=Date();lastSample = .distantPast;exploring=false
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["BRAILIO_UI_TEST_FIND"] == "1" {
+            roomFrames=[RoomFrame(jpeg:Data([0xff,0xd8,0xff,0xd9]),captured:Date())]
+            message="Scan fixture active. Release to write.";return
+        }
+        #endif
         message="Scan slowly. Release to finish.";start();emit(.uncertain)
     }
-    func finishRoom() { guard recording else { return };recording=false;scanVersion+=1;message="Scan ready. Write the name or check the current object." }
+    func finishRoom() { guard recording else { return };recording=false;scanVersion+=1;message="Scan ready. Write the object name." }
     func stop() {
         feedbackRequested=false;startTask?.cancel();startTask=nil;starting=false;watchdog?.cancel();watchdog=nil
         recording=false;running=false;session.pause();invalidateWorld();emit(.paused);onStopFeedback?()
@@ -285,10 +295,9 @@ enum PinGuidance {
         guard running,frame.timestamp>=startedAt else { return };lastFrameTime=frame.timestamp
         guard frame.camera.trackingState == .normal else { if feedbackRequested,!exploring { emit(.uncertain) };return }
         if recording,Date().timeIntervalSince(scanStarted)>30 { finishRoom() }
-        if !guiding,Date().timeIntervalSince(lastSample)>=1 {
+        if recording,Date().timeIntervalSince(lastSample)>=1 {
             lastSample=Date()
             if let sample=copySnapshot(frame) {
-                previewImage=UIImage(data:sample.frame.jpeg)
                 if recording { snapshots.append(sample);roomFrames.append(sample.frame);if snapshots.count>30 { snapshots.removeFirst();roomFrames.removeFirst() } }
             }
         }
@@ -314,7 +323,6 @@ struct RoomTrackingHost:UIViewRepresentable {
     func updateUIView(_ view:ARSCNView,context:Context) {}
 }
 struct RoomHoldPanel:UIViewRepresentable {
-    let image:UIImage?
     let recording:Bool
     let guiding:Bool
     let canRetry:Bool
@@ -323,26 +331,26 @@ struct RoomHoldPanel:UIViewRepresentable {
     let onCheck:()->Void
     func makeUIView(context:Context)->HoldView { HoldView() }
     func updateUIView(_ view:HoldView,context:Context) {
-        view.image.image=image;view.recording=recording;view.canCheck=guiding || canRetry
+        view.recording=recording;view.canCheck=guiding || canRetry
         view.onHold=onHold;view.onRelease=onRelease;view.onCheck=onCheck
         view.title.text=recording ? "Release to finish" : guiding ? "Tap to check" : canRetry ? "Turn and tap to retry" : "Hold to scan"
-        view.accessibilityLabel=view.title.text;view.accessibilityIdentifier="roomHoldControl"
+        view.accessibilityLabel=view.title.text;view.accessibilityValue=recording ? "Recording" : guiding ? "Guiding" : "Ready";view.accessibilityIdentifier="roomHoldControl"
     }
     final class HoldView:UIView {
-        let image=UIImageView();let title=UILabel()
+        let title=UILabel()
         var recording=false,canCheck=false
         var onHold:(()->Void)?,onRelease:(()->Void)?,onCheck:(()->Void)?
         private var hold:Task<Void,Never>?,held=false
         override init(frame:CGRect) {
-            super.init(frame:frame);backgroundColor = .secondarySystemBackground;image.contentMode = .scaleAspectFill;addSubview(image)
+            super.init(frame:frame);backgroundColor = .secondarySystemBackground
             title.textAlignment = .center;title.font = .preferredFont(forTextStyle:.title2);title.adjustsFontForContentSizeCategory=true;title.numberOfLines=2
             title.textColor = .white;title.backgroundColor=UIColor(red:0.1,green:0.29,blue:0.24,alpha:0.95);addSubview(title)
             isAccessibilityElement=true;accessibilityTraits = .button;layer.cornerRadius=24;clipsToBounds=true
         }
         required init?(coder:NSCoder) { fatalError() }
-        override func layoutSubviews() { super.layoutSubviews();image.frame=bounds;let width=min(bounds.width-32,260);title.frame=CGRect(x:(bounds.width-width)/2,y:(bounds.height-120)/2,width:width,height:120);title.layer.cornerRadius=24;title.clipsToBounds=true }
+        override func layoutSubviews() { super.layoutSubviews();let width=min(bounds.width-32,260);title.frame=CGRect(x:(bounds.width-width)/2,y:(bounds.height-120)/2,width:width,height:120);title.layer.cornerRadius=24;title.clipsToBounds=true }
         override func touchesBegan(_ touches:Set<UITouch>,with event:UIEvent?) {
-            held=false;hold?.cancel();guard let touch=touches.first,title.frame.contains(touch.location(in:self)) else { return }
+            held=false;hold?.cancel();guard touches.first != nil else { return }
             hold=Task { do { try await Task.sleep(for:.milliseconds(450)) } catch { return };held=true;onHold?() }
         }
         override func touchesEnded(_ touches:Set<UITouch>,with event:UIEvent?) { hold?.cancel();if held { onRelease?() } else if canCheck { onCheck?() } }

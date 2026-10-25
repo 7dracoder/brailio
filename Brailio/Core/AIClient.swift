@@ -13,20 +13,18 @@ struct AIResult: Codable {
 
 enum AIClient {
     static func request(task: String, text: String, image: Data? = nil, images: [Data] = [], documents: [DocumentExcerpt] = []) async throws -> AIResult {
-        if DemoAccess.configured {
-            if DemoAccess.provider == .gemini { return try await DemoGemini.request(task:task,text:text,image:image,images:images,documents:documents) }
+        if !DemoAccess.key(for: .baseten).isEmpty {
             return try await DemoBaseten.request(task:task,text:text,image:image,images:images,documents:documents)
         }
-        guard DemoAccess.provider == .baseten else { throw ServiceError.message("Add a Gemini key for the optional Gemini connection, or select Baseten.") }
         guard let raw = UserDefaults.standard.string(forKey: "backendURL"),
               let base = URL(string: raw), base.scheme == "https", base.host != nil else {
-            throw ServiceError.message("The AI connection needs companion setup. Baseten credentials stay on the server.")
+            throw ServiceError.message("Service is temporarily unavailable. Please try again.")
         }
         var request = URLRequest(url: base.appendingPathComponent("assist"))
         request.httpMethod = "POST"
         request.timeoutInterval = 45
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        guard !BackendAccess.token.isEmpty else { throw ServiceError.message("The AI connection needs companion setup.") }
+        guard !BackendAccess.token.isEmpty else { throw ServiceError.message("Service is temporarily unavailable. Please try again.") }
         request.setValue("Bearer " + BackendAccess.token, forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["task": task, "text": text, "image": image?.base64EncodedString() ?? "", "images": images.map { $0.base64EncodedString() }, "documents": documents.map(\.json)])
         let (data, response) = try await URLSession.shared.data(for: request)

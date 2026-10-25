@@ -63,6 +63,24 @@ final class BrailioUITests: XCTestCase {
         XCTAssertEqual(app.scrollViews.count, 0)
         capture(app, "Morse-Learn")
     }
+    @MainActor func testFindHasNoPreviewOrPreviousNameAndHoldOpensWriting() {
+        let app = XCUIApplication(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"] = "1"; app.launchEnvironment["BRAILIO_UI_TEST_FIND"] = "1"; app.launchArguments=["-findQuery", "previous laptop"]; app.launch()
+        choose("navNext", in: app); choose("homeSettings", in: app)
+        XCTAssertFalse(app.buttons["settingsAI"].exists)
+        XCTAssertFalse(app.staticTexts["AI connection"].exists)
+        choose("navBack", in: app); choose("homeFind", in: app)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "previous laptop")).firstMatch.exists)
+        let hold = app.buttons["roomHoldControl"]
+        XCTAssertTrue(hold.exists)
+        XCTAssertEqual(hold.label, "Hold to scan")
+        hold.press(forDuration: 1.0)
+        XCTAssertTrue(app.otherElements["handwritingCanvas"].waitForExistence(timeout: 6))
+        XCTAssertEqual(app.scrollViews.count, 0)
+        choose("navBack", in: app)
+        choose("navBack", in: app); choose("homeFind", in: app)
+        XCTAssertEqual(app.buttons["roomHoldControl"].label, "Hold to scan")
+        capture(app, "Find-Hidden-Camera")
+    }
     @MainActor func testEveryPrimaryFeatureHasFixedNavigation() {
         let app = launch()
         for id in ["homeRead", "homeTalk", "homeFind", "homeGo", "homeLearn"] {

@@ -28,7 +28,7 @@ struct HomeView: View {
     @StateObject private var scanner = TrackerScanner()
     @AppStorage("messageDraft") private var draft = ""
     @AppStorage("readerText") private var reading = "hello"
-    @AppStorage("findQuery") private var object = "keys"
+    @State private var object = ""
     @AppStorage("destinationQuery") private var destination = ""
     @AppStorage("notes") private var notesData = Data()
     @AppStorage("tactileMode") private var tactileMode = TactileMode.morse.rawValue
@@ -69,7 +69,6 @@ struct HomeView: View {
     @State private var spaceAfterRecognition = false
     @State private var lastInkCommit = ""
     @State private var captureRequested = false
-    @State private var showingConnection = false
     @State private var writingDestination = false
     @State private var destinationWriting = ""
     @State private var routeTask: Task<Void, Never>?
@@ -171,7 +170,6 @@ struct HomeView: View {
             guard captureRequested, screen == .find, phase == .active else { return }
             captureRequested = false
             guard !room.roomFrames.isEmpty else { fail("No room detail captured. Hold longer and try again."); return }
-            if room.needsRescan { startFinding(); return }
             openObjectWriting()
         }
         .onChange(of: navigationHaptics.error) { _, error in
@@ -220,7 +218,6 @@ struct HomeView: View {
             }
         }
 
-        .sheet(isPresented: $showingConnection) { AIConnectionView() }
         .sheet(item: $entry) { item in
             CompanionEntry(title: item.title, value: item.current) { value in
                 switch item.id {
@@ -276,7 +273,7 @@ struct HomeView: View {
         case .documents, .library, .online: return documentQuery.isEmpty ? documents.status : documentQuery + ". " + documents.status
         case .write: return !ink.preview.isEmpty ? ink.preview : handwritingText.isEmpty ? "Write a word" : String(handwritingText.suffix(70))
         case .talk: return page == 0 ? (draft.isEmpty ? "Empty message" : String(draft.suffix(70))) : String(conversation.transcript.suffix(70))
-        case .find: return result?.text ?? "Find: \(object)"
+        case .find: return room.message
         case .storage: return "Saved on this iPhone: \(notes.count) notes, \(savedPlaces.count) places, \(room.pins.count) objects, \(documents.documents.count) books"
         case .notes: return notes.first.map { "Latest: " + $0.text } ?? "No notes yet. Write, then Save."
         case .objects: return room.pins.isEmpty ? "No saved objects yet. Find an object to save it." : "Double tap an object to find it again"
@@ -303,7 +300,7 @@ struct HomeView: View {
             }))
         }
         if screen == .find && page == 0 {
-            return AnyView(RoomHoldPanel(image: room.previewImage, recording: room.recording, guiding: room.guiding, canRetry: room.needsRescan && !object.isEmpty, onHold: beginRoomCapture, onRelease: endRoomCapture, onCheck: { reader.stop(); labels.stop(); focused = nil; readingLabel=false; room.check() }))
+            return AnyView(RoomHoldPanel(recording: room.recording, guiding: room.guiding, canRetry: room.needsRescan && !object.isEmpty, onHold: beginRoomCapture, onRelease: endRoomCapture, onCheck: { reader.stop(); labels.stop(); focused = nil; readingLabel=false; room.check() }))
         }
         return nil
     }
@@ -347,7 +344,7 @@ struct HomeView: View {
         }
     }
     private func beginRoomCapture() {
-        pending?.cancel(); labels.stop(); reader.stop(); room.stop(); readingLabel=false
+        pending?.cancel(); labels.stop(); reader.stop(); room.prepareForScan(); object=""; objectWriting=""; result=nil; readingLabel=false
         captureRequested = true; focused = nil; room.recordRoom(); notice = "Mapping positions with temporary snapshots. No video is saved."
     }
     private func endRoomCapture() { room.finishRoom() }
@@ -390,7 +387,7 @@ struct HomeView: View {
     private func fail(_ text: String) { continuousBook = false; reader.stop(); notice = text; if screen == .find { room.message = text }; if [.documents, .library, .online].contains(screen) { documents.status = text }; playLabel("error") }
     private func stopAll(keepRoom: Bool = false) { readingLabel=false; navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); if keepRoom { room.suspendFeedback() } else { room.stop() }; pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
     private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingQuestion = false; writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }
-        if next == .find { room.start() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
+        if next == .find { object=""; objectWriting=""; result=nil; room.prepareForScan() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
     /// Faith keeps camera tracking alive while the request is entered, so the scan and AR world survive.
     private func openObjectWriting() {
         stopAll(keepRoom: true); history.append(screen); clearDraftRequested = false; clearAllRequested = false
@@ -548,7 +545,7 @@ struct HomeView: View {
                 action("findDiscard", "Clear scan", "trash") { captureRequested = false; room.discardRoom(); feedback("cleared") },
                 action("findGuide", "Cue guide", "hand.tap") { readingLabel=true; reader.playText("Single approach pulses grow stronger and faster near the saved position. Two short pulses mean tracking is uncertain. Camera tracking is required. Objects may move. No obstacle detection.") },
                 action("findTags", "Tags", "antenna.radiowaves.left.and.right") { open(.trackers) }
-            ]] + chunks(room.pins.enumerated().map { index, pin in action("pin\(index)", "Position \(index + 1)", "mappin", value: pin.name) { object = pin.name; startFinding() } })
+            ]]
         case .go:
             return [[action("goWrite", "Write destination", "hand.draw") { destinationWriting=""; open(.write); writingDestination=true },
                      action("goDraft", "Use draft", "doc", enabled: !draft.isEmpty && !startingRoute) { destination = draft; startNavigation(draft) },
@@ -611,7 +608,7 @@ struct HomeView: View {
                      action("settingsSlower", "Slower", "tortoise") { pace = min(0.6, pace + 0.04); feedback("slower") },
                      action("settingsFaster", "Faster", "hare") { pace = max(0.18, pace - 0.04); feedback("faster") },
                      action("settingsTest", "Test SOS", "waveform") { reader.playText("sos") },
-                     action("settingsAI", "AI connection", "link", value: DemoAccess.configured ? "Private demo" : "Setup") { showingConnection = true }], [
+                     action("settingsLearn", "Practice", "hand.tap") { open(.learn) }], [
                      action("settingsStronger", "Stronger", "plus") { intensity = min(1, intensity + 0.1); feedback("stronger") },
                      action("settingsSofter", "Softer", "minus") { intensity = max(0.2, intensity - 0.1); feedback("softer") },
                      action("settingsCodeGuide", "Code guide", "info.circle") { feedback(TactileMode.current == .morse ? "Morse uses short dots and long dashes. Learn has examples." : "Braille uses six timed dot slots. Learn has examples.") }],
@@ -629,7 +626,7 @@ struct HomeView: View {
                      action("storageSaveDraft", "Save draft", "square.and.arrow.down", enabled: !draft.isEmpty) { saveNote() },
                      action("storageWhere", "Storage", "iphone") { feedback("Saved on this iPhone only. Nothing is uploaded.") }]]
         case .objects:
-            return chunks(room.pins.reversed().enumerated().map { index, pin in action("object\(index)", pin.name, "mappin", value: pin.seen ?? "position saved") { object = pin.name; open(.find); startFinding() } })
+            return chunks(room.pins.reversed().enumerated().map { index, pin in action("object\(index)", pin.name, "mappin", value: pin.seen ?? "position saved") { open(.find); object = pin.name; startFinding() } })
         case .notes:
             return chunks(notes.enumerated().map { index, note in action("note\(index)", "Note \(index + 1)", "note.text", value: String(note.text.prefix(24))) { documents.close(); reading = note.text; open(.read) } })
         case .trackers:

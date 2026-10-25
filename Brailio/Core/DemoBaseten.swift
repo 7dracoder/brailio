@@ -30,7 +30,7 @@ enum DemoBaseten {
         let (data,response)=try await session.data(for:request)
         guard let http=response as? HTTPURLResponse, http.statusCode == 200 else {
             let code=(response as? HTTPURLResponse)?.statusCode ?? 0
-            throw ServiceError.message(code == 401 || code == 403 ? "Baseten rejected the demo key. Update it in AI connection." : "Baseten request failed. Retry when connected to the internet.")
+            throw ServiceError.message(code == 401 || code == 403 ? "Service authentication failed. Please try again later." : "Baseten request failed. Retry when connected to the internet.")
         }
         struct Reply: Decodable { struct Choice: Decodable { struct Message: Decodable { let content:String }; let message:Message }; let choices:[Choice] }
         guard let content=try JSONDecoder().decode(Reply.self,from:data).choices.first?.message.content else { throw ServiceError.message("Empty Baseten response.") }
