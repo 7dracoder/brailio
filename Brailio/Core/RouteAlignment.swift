@@ -61,17 +61,30 @@ struct RouteAssessment {
     let distance: Double?
     let angle: Double?
 }
+struct RouteHeading {
+    let degrees: Double
+    let accuracy: Double
+    let timestamp: Date
+    func reliable(at now: Date) -> Bool {
+        degrees.isFinite && (0..<360).contains(degrees) && accuracy.isFinite && (0...25).contains(accuracy) && (-1...6).contains(now.timeIntervalSince(timestamp))
+    }
+}
 enum RouteAlignment {
-    static func evaluate(_ location: CLLocation, path: RoutePath, progress: Double, now: Date = Date()) -> RouteAssessment {
+    static func hasReliableCourse(_ location: CLLocation) -> Bool {
+        location.course.isFinite && (0..<360).contains(location.course) && location.courseAccuracy >= 0 && location.courseAccuracy <= 25 && location.speed >= 0.5 && location.speedAccuracy >= 0 && location.speedAccuracy <= 1.5
+    }
+    static func evaluate(_ location: CLLocation, path: RoutePath, progress: Double, now: Date = Date(), heading: RouteHeading? = nil) -> RouteAssessment {
         let age = now.timeIntervalSince(location.timestamp)
         guard age >= -1, age <= 6, CLLocationCoordinate2DIsValid(location.coordinate), location.horizontalAccuracy.isFinite, location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 18,
               let projection = path.projection(location.coordinate, progress: progress) else { return RouteAssessment(feedback: .uncertain, progress: progress, distance: nil, angle: nil) }
-        let courseValid = location.course.isFinite && (0..<360).contains(location.course) && location.courseAccuracy >= 0 && location.courseAccuracy <= 25 && location.speed >= 0.5 && location.speedAccuracy >= 0 && location.speedAccuracy <= 1.5
-        let angle = courseValid ? RoutePath.angle(location.course, projection.bearing) : nil
+        let courseValid = hasReliableCourse(location)
+        let compass = heading.flatMap { $0.reliable(at: now) ? $0 : nil }
+        let angle = courseValid ? RoutePath.angle(location.course, projection.bearing) : compass.map { RoutePath.angle($0.degrees, projection.bearing) }
+        let directionAccuracy = courseValid ? location.courseAccuracy : compass?.accuracy ?? 0
         let corridor = max(6, location.horizontalAccuracy * 1.5)
         let distanceError = max(0, projection.distance - corridor)
         let distanceSeverity = min(1, distanceError / 35)
-        let headingSeverity = angle.map { min(1, max(0, $0 - 30 - location.courseAccuracy) / 60) } ?? 0
+        let headingSeverity = angle.map { min(1, max(0, $0 - 30 - directionAccuracy) / 60) } ?? 0
         let severity = max(distanceSeverity, headingSeverity)
         let newProgress = projection.distance <= corridor ? max(progress, projection.progress) : progress
         if severity > 0.02 {
@@ -81,7 +94,7 @@ enum RouteAlignment {
         if path.total - projection.progress < 8, projection.distance < max(8, location.horizontalAccuracy) {
             return RouteAssessment(feedback: RouteFeedback(kind: .end, strength: 0), progress: newProgress, distance: projection.distance, angle: angle)
         }
-        guard courseValid, projection.distance <= 8 else { return RouteAssessment(feedback: .uncertain, progress: newProgress, distance: projection.distance, angle: nil) }
+        guard angle != nil, projection.distance <= 8 else { return RouteAssessment(feedback: .uncertain, progress: newProgress, distance: projection.distance, angle: nil) }
         return RouteAssessment(feedback: RouteFeedback(kind: .aligned, strength: 0), progress: newProgress, distance: projection.distance, angle: angle)
     }
 }

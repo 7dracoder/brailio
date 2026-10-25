@@ -41,13 +41,21 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
     private var filter = RouteDeviationFilter()
     private var lastAssessed = Date.distantPast
     private var locationRequested = false
+    private var heading: RouteHeading?
+    private var lastHeadingAssessed = Date.distantPast
+    private var lastRecovery = Date.distantPast
+    private(set) var locationUpdateCount = 0
+    var locationAccuracy: Double? { location?.horizontalAccuracy }
+    var locationAge: TimeInterval? { location.map { Date().timeIntervalSince($0.timestamp) } }
     private var selectedPlace: MKMapItem?
     var steps: [WalkingStep] { route?.steps ?? [] }
     var current: WalkingStep? { steps.indices.contains(index) ? steps[index] : nil }
     var googleURL: URL? { route.map { GoogleRouting.directionsURL(destination: $0.destination) } }
     override init() {
-        super.init(); manager.delegate = self; manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 1; manager.activityType = .fitness
+        super.init(); manager.delegate = self; manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = kCLDistanceFilterNone; manager.activityType = .fitness
+        manager.pausesLocationUpdatesAutomatically = false
+        manager.headingFilter = kCLHeadingFilterNone; manager.headingOrientation = .portrait
         #if DEBUG
         if ProcessInfo.processInfo.environment["BRAILIO_UI_TEST_ROUTE"] == "1" {
             let points = [CLLocationCoordinate2D(latitude:37,longitude:-122),CLLocationCoordinate2D(latitude:37.005,longitude:-122)]
@@ -59,31 +67,58 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
         locationRequested = true
         switch manager.authorizationStatus {
         case .notDetermined: manager.requestWhenInUseAuthorization()
-        case .authorizedAlways, .authorizedWhenInUse: manager.startUpdatingLocation()
+        case .authorizedAlways, .authorizedWhenInUse: startSensors()
         default: error = "Location is disabled. Allow location while using Brailio in iPhone Settings."; if guiding { publish(.uncertain, message: "Location unavailable. Guidance uncertain.") }
         }
     }
+    private func startSensors() {
+        manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() { manager.startUpdatingHeading() }
+    }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if !locationRequested { manager.stopUpdatingLocation(); return }
-        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways { manager.startUpdatingLocation() }
+        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways { startSensors() }
         else if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted { status = "Location permission denied."; if guiding { publish(.uncertain, message: status) } }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let latest = locations.last, latest.timestamp >= (location?.timestamp ?? .distantPast) else { return }
+        guard locationRequested, let latest = locations.last, latest.timestamp >= (location?.timestamp ?? .distantPast) else { return }
         ingest(latest)
     }
     func ingest(_ latest: CLLocation, now: Date = Date()) {
+        guard latest.timestamp >= (location?.timestamp ?? .distantPast) else { return }
+        if latest.timestamp > (location?.timestamp ?? .distantPast) { locationUpdateCount += 1 }
         location = latest
         guard guiding, !suspended, let path else { return }
         guard latest.timestamp > lastAssessed else { return }; lastAssessed = latest.timestamp
-        let assessment = RouteAlignment.evaluate(latest, path: path, progress: progress, now: now)
+        assess(latest, path: path, now: now)
+    }
+    func ingestHeading(_ value: RouteHeading, now: Date = Date()) {
+        guard value.timestamp > (heading?.timestamp ?? .distantPast) else { return }
+        heading = value
+        guard guiding, !suspended, value.reliable(at: now), value.timestamp > lastHeadingAssessed,
+              let location, !RouteAlignment.hasReliableCourse(location), let path,
+              let projection = path.projection(location.coordinate, progress: progress), projection.distance <= 8 else { return }
+        lastHeadingAssessed = value.timestamp
+        // New compass observations can confirm phone direction. They cannot confirm a cached lateral GPS deviation.
+        assess(location, path: path, now: now)
+    }
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        guard locationRequested else { return }
+        ingestHeading(RouteHeading(degrees:newHeading.trueHeading,accuracy:newHeading.headingAccuracy,timestamp:newHeading.timestamp))
+    }
+    private func assess(_ latest: CLLocation, path: RoutePath, now: Date) {
+        let assessment = RouteAlignment.evaluate(latest, path: path, progress: progress, now: now, heading: heading)
+        let phoneDirection = assessment.angle != nil && !RouteAlignment.hasReliableCourse(latest) && (assessment.distance ?? .infinity) <= 8
         progress = assessment.progress
         let feedback = filter.update(ProximityFeedback.route(assessment,length:path.total,enabled:proximityEnabled))
         switch feedback.kind {
-        case .aligned: publish(feedback, message: "Aligned with the route. Silent feedback. No crossing or obstacle detection.")
-        case .approaching: publish(feedback, message: "Approach pulses grow stronger and faster as the remaining route shortens. No crossing or obstacle detection.")
-        case .deviated: publish(feedback, message: "Route deviation. Stronger pulses mean greater error. Stop and check your surroundings before correcting.")
-        case .uncertain: publish(feedback, message: "Position or travel direction uncertain. Two short pulses. Wait for reliable GPS and movement.")
+        case .aligned: publish(feedback, message: phoneDirection ? "Phone points along the route. Silent alignment feedback." : "Walking along the route. Silent alignment feedback.")
+        case .approaching: publish(feedback, message: phoneDirection ? "Phone points along the route. Approach taps intensify near the destination." : "Walking along the route. Approach taps intensify near the destination.")
+        case .deviated: publish(feedback, message: phoneDirection ? "Phone points away from the route. Turn slowly; correction taps ease as it lines up." : "Route deviation. Stronger taps mean greater error. Check your surroundings.")
+        case .uncertain:
+            let age = now.timeIntervalSince(latest.timestamp)
+            let message = age > 6 ? "Refreshing your location. Guidance will resume automatically." : latest.horizontalAccuracy > 18 ? "Location accuracy is low. Move to an open area; guidance resumes automatically." : "Location updated. Point the phone ahead or walk to establish direction."
+            publish(feedback, message: message)
         case .end: publish(feedback, message: "Final route point nearby. Approach pulses continue until Stop. Confirm the destination yourself.")
         case .paused: break
         }
@@ -155,28 +190,39 @@ final class RouteGuide: NSObject, ObservableObject, @preconcurrency CLLocationMa
         } catch { guard requestID == routeRequest else { return }; self.error = error.localizedDescription; status = error.localizedDescription }
     }
     func start(updatingLocation: Bool = true) {
-        guard path != nil else { return }; guiding = true; suspended = false; filter = RouteDeviationFilter(); lastAssessed = .distantPast
+        guard path != nil else { return }; let continuing = guiding; guiding = true; suspended = false; if !continuing { filter = RouteDeviationFilter(); lastAssessed = .distantPast; lastRecovery = .distantPast }
         #if DEBUG
         let fixture = ProcessInfo.processInfo.environment["BRAILIO_UI_TEST_ROUTE"] == "1"
         #else
         let fixture = false
         #endif
         if updatingLocation && !fixture { enable() }
-        publish(.uncertain, message: "Checking GPS and direction of travel. Two short pulses mean uncertain.")
+        publish(.uncertain, message: "Guidance started. Getting your location and direction.")
         if let location { ingest(location) }
         watchdog?.cancel(); watchdog = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
                 guard let self, self.guiding else { return }
-                if !self.suspended, self.location.map({ Date().timeIntervalSince($0.timestamp) > 6 }) ?? true { self.filter = RouteDeviationFilter(); self.publish(.uncertain, message: "GPS is stale. Route alignment is unknown.") }
+                self.checkLocationFreshness()
             }
+        }
+    }
+    func checkLocationFreshness(now: Date = Date(), recover: Bool = true) {
+        guard guiding, !suspended else { return }
+        guard location.map({ now.timeIntervalSince($0.timestamp) > 6 }) ?? true else { return }
+        filter = RouteDeviationFilter()
+        publish(.uncertain, message: "Refreshing your location. Guidance will resume automatically.")
+        if recover, locationRequested, now.timeIntervalSince(lastRecovery) >= 8,
+           manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            lastRecovery = now
+            manager.stopUpdatingLocation(); startSensors()
         }
     }
     func suspendFeedback() { guard guiding else { return }; suspended = true; status = "Guidance paused for exploration. Resume to continue."; onFeedback?(.paused) }
     func pauseForHapticFailure(_ message: String) { stop(); status = message; error = message }
     func next() { guard index < steps.count - 1 else { status = "End of route instructions. Confirm the destination yourself."; return }; index += 1; if let current { onCue?(.instruction(current.instructions)) } }
     func reroute() async { guard let selectedPlace else { return }; await preview(selectedPlace) }
-    func stop() { locationRequested = false; guiding = false; suspended = false; watchdog?.cancel(); watchdog = nil; manager.stopUpdatingLocation(); status = "Guidance stopped."; routeRequest = UUID(); busy = false; search?.cancel(); directions?.cancel(); publish(.paused, message: status) }
+    func stop() { locationRequested = false; guiding = false; suspended = false; watchdog?.cancel(); watchdog = nil; manager.stopUpdatingLocation(); manager.stopUpdatingHeading(); heading=nil; lastHeadingAssessed = .distantPast; status = "Guidance stopped."; routeRequest = UUID(); busy = false; search?.cancel(); directions?.cancel(); publish(.paused, message: status) }
     private func publish(_ feedback: RouteFeedback, message: String) { self.feedback = feedback; status = message; if !suspended { onFeedback?(feedback) } }
     #if DEBUG
     func loadTestRoute(_ route: WalkingRoute) { self.route = route; path = RoutePath(route.points); progress = 0; filter = RouteDeviationFilter(); lastAssessed = .distantPast }

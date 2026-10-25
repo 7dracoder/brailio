@@ -80,3 +80,66 @@ final class RouteAlignmentTests: XCTestCase {
         XCTAssertEqual(items.first { $0.name == "travelmode" }?.value,"walking")
     }
 }
+
+extension RouteAlignmentTests {
+    func testStationaryPhoneCanUseRecentReliableTrueHeading() {
+        let now = Date(), still = fix(speed:0, at:now)
+        let aligned = RouteAlignment.evaluate(still,path:path,progress:40,now:now,heading:RouteHeading(degrees:0,accuracy:5,timestamp:now))
+        XCTAssertEqual(aligned.feedback.kind,.aligned)
+        let away = RouteAlignment.evaluate(still,path:path,progress:40,now:now,heading:RouteHeading(degrees:180,accuracy:5,timestamp:now))
+        XCTAssertEqual(away.feedback.kind,.deviated); XCTAssertGreaterThan(away.feedback.strength,0.95)
+    }
+    func testCompassCannotOverrideStaleGPSOrUnreliableHeading() {
+        let now=Date()
+        for heading in [RouteHeading(degrees:0,accuracy:40,timestamp:now),RouteHeading(degrees:-1,accuracy:2,timestamp:now),RouteHeading(degrees:0,accuracy:2,timestamp:now.addingTimeInterval(-10))] {
+            XCTAssertEqual(RouteAlignment.evaluate(fix(speed:0,at:now),path:path,progress:40,now:now,heading:heading).feedback.kind,.uncertain)
+        }
+        XCTAssertEqual(RouteAlignment.evaluate(fix(speed:0,at:now.addingTimeInterval(-20)),path:path,progress:40,now:now,heading:RouteHeading(degrees:0,accuracy:2,timestamp:now)).feedback.kind,.uncertain)
+    }
+    func testMovingCourseTakesPriorityOverPhoneHeading() {
+        let now=Date()
+        XCTAssertEqual(RouteAlignment.evaluate(fix(course:180,at:now),path:path,progress:40,now:now,heading:RouteHeading(degrees:0,accuracy:2,timestamp:now)).feedback.kind,.deviated)
+    }
+    @MainActor func testStaleFixRecoversAutomaticallyWhenFreshGPSArrives() {
+        let now=Date(), guide=RouteGuide()
+        guide.loadTestRoute(WalkingRoute(provider:.apple,points:path.points,steps:[],destination:point(north:500)))
+        guide.ingest(fix(at:now.addingTimeInterval(-15)),now:now)
+        guide.start(updatingLocation:false); guide.checkLocationFreshness(now:now,recover:false)
+        XCTAssertEqual(guide.feedback.kind,.uncertain); XCTAssertTrue(guide.guiding)
+        XCTAssertTrue(guide.status.contains("resume automatically"))
+        guide.ingest(fix(at:now),now:now)
+        XCTAssertEqual(guide.feedback.kind,.approaching); XCTAssertTrue(guide.guiding)
+        guide.stop()
+    }
+    @MainActor func testCompassEventsCannotConfirmCachedLateralGPSDeviation() {
+        let now=Date(), guide=RouteGuide()
+        guide.loadTestRoute(WalkingRoute(provider:.apple,points:path.points,steps:[],destination:point(north:500)))
+        guide.start(updatingLocation:false)
+        guide.ingest(fix(east:60,speed:0,at:now),now:now)
+        XCTAssertEqual(guide.feedback.kind,.uncertain)
+        guide.ingestHeading(RouteHeading(degrees:0,accuracy:3,timestamp:now),now:now)
+        guide.ingestHeading(RouteHeading(degrees:0,accuracy:3,timestamp:now.addingTimeInterval(0.1)),now:now.addingTimeInterval(0.1))
+        XCTAssertEqual(guide.feedback.kind,.uncertain)
+        guide.stop()
+    }
+    @MainActor func testLiveForegroundLocationStaysFreshWithoutWalking() async throws {
+        guard ProcessInfo.processInfo.environment["BRAILIO_LIVE_LOCATION"] == "1" else { throw XCTSkip("Opt-in live iPhone location check") }
+        let guide=RouteGuide(); defer { guide.stop() }
+        guide.enable()
+        for _ in 0..<150 {
+            if let age=guide.locationAge, age <= 6 { break }
+            try await Task.sleep(for:.milliseconds(200))
+        }
+        let first=try XCTUnwrap(guide.location,guide.error ?? "No location received")
+        XCTAssertLessThanOrEqual(Date().timeIntervalSince(first.timestamp),6)
+        var end=first.coordinate; end.latitude += 0.001
+        // Synthetic route geometry exercises live sensor refresh without requesting a new personal destination.
+        guide.loadTestRoute(WalkingRoute(provider:.apple,points:[first.coordinate,end],steps:[],destination:end))
+        guide.start()
+        try await Task.sleep(for:.seconds(14))
+        XCTAssertGreaterThanOrEqual(guide.locationUpdateCount,2)
+        XCTAssertLessThanOrEqual(guide.locationAge ?? .infinity,6)
+        let report:[String:Any]=["updates":guide.locationUpdateCount,"fixAgeSeconds":guide.locationAge ?? -1,"accuracyMeters":guide.locationAccuracy ?? -1,"active":guide.guiding,"status":guide.status]
+        let attachment=XCTAttachment(data:try JSONSerialization.data(withJSONObject:report),uniformTypeIdentifier:"public.json"); attachment.name="Live-location-health-no-coordinates"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+}

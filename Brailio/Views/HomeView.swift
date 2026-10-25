@@ -254,7 +254,7 @@ struct HomeView: View {
             VStack(spacing: 5) {
                 Text(guide.guiding ? (guide.suspended ? "Paused for exploration" : guide.status) : guide.current?.instructions ?? guide.status).font(.headline).lineLimit(2)
                 Text(route.provider.title).font(.system(size: 14, weight: .regular)).foregroundStyle(.primary).lineLimit(1).accessibilityIdentifier("routeAttribution")
-            }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("routeSummary")
+            }.padding(10).frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("routeSummary").accessibilityValue(guide.guiding ? "Guidance active" : "Guidance stopped")
         } else if screen == .read, let cell = reader.current {
             HStack { Text(cell.label).font(.system(.title2, design: .rounded, weight: .bold)).lineLimit(2); Spacer(); if reader.mode == .braille { BrailleDots(dots: cell.dots, active: reader.activeDot) } else { Text(cell.label == "Space" ? "/" : Morse.code(cell.label)).font(.title2.monospaced()).accessibilityLabel("Morse " + Morse.code(cell.label)) }; Text((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count)").font(.caption) }.accessibilityElement(children: .ignore).accessibilityAddTraits(.isStaticText).accessibilityLabel((documents.current == nil ? "" : "p\(documents.page + 1) ") + "\(reader.index + 1)/\(reader.cells.count). " + cell.label + ". " + (reader.mode == .morse ? "Morse " + Morse.code(cell.label) : "Dots " + cell.dots.sorted().map(String.init).joined(separator: " "))).accessibilityIdentifier("readerPosition").padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
         } else {
@@ -338,7 +338,7 @@ struct HomeView: View {
             guard !Task.isCancelled, navigationID == id, appPhase == .active else { return }
             startingRoute=false; routeTask=nil
             if guide.route != nil {
-                open(.route); pending?.cancel(); labels.stop(); readingLabel=false; focused=nil; guide.start()
+                open(.route)
             } else if guide.places.count > 1 { open(.places); feedback("choose destination") }
             else { fail(guide.error ?? guide.status) }
         }
@@ -387,7 +387,9 @@ struct HomeView: View {
     private func fail(_ text: String) { continuousBook = false; reader.stop(); notice = text; if screen == .find { room.message = text }; if [.documents, .library, .online].contains(screen) { documents.status = text }; playLabel("error") }
     private func stopAll(keepRoom: Bool = false) { readingLabel=false; navigationID=UUID(); routeTask?.cancel(); routeTask=nil; startingRoute=false; continuousBook = false; pageRequest = UUID(); loadingPage = false; if documents.active != nil && screen == .read { documents.bookmark(reader.index) }; captureRequested = false; finishAfterRecognition = false; spaceAfterRecognition = false; ink.clear(); if keepRoom { room.suspendFeedback() } else { room.stop() }; pending?.cancel(); reader.stop(); labels.stop(); conversation.stop(); guide.stop(); navigationHaptics.stop(); scanner.stop(); speaker.stop(); scanID = UUID() }
     private func open(_ next: Screen) { if next == .route { mapFocusLabel="" }; if next == .write { writingQuestion = false; writingObject = false; writingSearch = false; writingDestination = false }; stopAll(); history.append(screen); clearDraftRequested = false; clearAllRequested = false; screen = next; page = 0; focused = nil; lastControl = nil; notice = next.rawValue.lowercased(); if next == .read { if documents.active != nil { loadDocumentPage(play: false) } else { reader.load(TactileEncoding.translate(reading).cells) } }
-        if next == .find { object=""; objectWriting=""; result=nil; room.prepareForScan() }; playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) }
+        if next == .find { object=""; objectWriting=""; result=nil; room.prepareForScan() }
+        if next == .route { pending?.cancel(); labels.stop(); reader.stop(); readingLabel=false; focused=nil; guide.start() }
+        else { playLabel(next == .write ? "draw" : next == .find ? "hold center" : next.rawValue.lowercased()) } }
     /// Faith keeps camera tracking alive while the request is entered, so the scan and AR world survive.
     private func openObjectWriting() {
         stopAll(keepRoom: true); history.append(screen); clearDraftRequested = false; clearAllRequested = false
@@ -565,7 +567,7 @@ struct HomeView: View {
         case .places:
             return chunks(guide.places.enumerated().map { index, place in action("place\(index)", "Place \(index + 1)", "mappin", value: place.name ?? "") {
                 notice = place.name ?? "place"; reader.playText(place.name ?? "place")
-                Task { await guide.preview(place); if guide.route != nil && screen == .places { open(.route); pending?.cancel(); labels.stop(); readingLabel=false; focused=nil; guide.start() } else { fail(guide.error ?? "route unavailable") } }
+                Task { await guide.preview(place); if guide.route != nil && screen == .places { open(.route) } else { fail(guide.error ?? "route unavailable") } }
             } })
         case .route:
             return [[], [action("routeRead", "Read step", "waveform", enabled: guide.current != nil) { if let text = guide.current?.instructions { readingLabel=true; reader.playText(ReadablePage.prepare(text).text) } },

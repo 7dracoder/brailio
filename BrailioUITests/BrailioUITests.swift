@@ -205,6 +205,15 @@ final class BrailioUITests: XCTestCase {
         choose("goApple", in: app)
         XCTAssertEqual(app.scrollViews.count, 0); capture(app, "Navigation-Providers")
     }
+    @MainActor func testOpeningCurrentMapAutomaticallyStartsGuidance() {
+        let app=XCUIApplication(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"]="1"; app.launchEnvironment["BRAILIO_UI_TEST_ROUTE"]="1"; app.launch()
+        choose("homeGo",in:app); choose("goCurrent",in:app)
+        XCTAssertTrue(app.otherElements["tactileRouteMap"].waitForExistence(timeout:5))
+        choose("navNext",in:app)
+        XCTAssertEqual(app.buttons["routeStart"].label,"Resume")
+        choose("navBack",in:app); choose("goCurrent",in:app); choose("navNext",in:app)
+        XCTAssertEqual(app.buttons["routeStart"].label,"Resume")
+    }
     @MainActor func testRouteStartExploreResumeAndStopWithoutScrolling() {
         let app = XCUIApplication(); app.launchEnvironment["BRAILIO_UI_TEST_RESET"] = "1"; app.launchEnvironment["BRAILIO_UI_TEST_ROUTE"] = "1"; app.launch()
         choose("homeGo", in: app); choose("goCurrent", in: app)
